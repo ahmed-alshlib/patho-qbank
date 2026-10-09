@@ -1,0 +1,31 @@
+{
+  "subject": "Patho 1", "subjectOrder": 1,
+  "chapter": "Cell Injury and Adaptation", "chapterOrder": 1,
+  "description": "Reversible and irreversible injury, necrosis, apoptosis, adaptations.",
+  "topics": [
+    { "name": "Reversible vs irreversible injury", "questions": [
+      { "text": "Which of the following is the earliest reversible change seen in cells exposed to hypoxia?",
+        "choices": ["Nuclear pyknosis", "Cellular swelling", "Karyolysis", "Plasma membrane rupture", "Amorphous densities in mitochondria"],
+        "correct": "B", "difficulty": "easy", "tags": "hypoxia,reversible",
+        "explanation": "Failure of the Na+/K+-ATPase pump from ATP depletion causes influx of Na+ and water, producing cellular swelling (hydropic change), the earliest reversible change. Pyknosis, karyolysis, membrane rupture and mitochondrial amorphous densities occur with irreversible injury." },
+      { "text": "Which finding best indicates that cell injury has become irreversible?",
+        "choices": ["Loss of microvilli", "Blebbing of the plasma membrane", "Ribosome detachment from the ER", "Large amorphous densities in mitochondria", "Clumping of nuclear chromatin"],
+        "correct": "D", "difficulty": "medium", "tags": "irreversible,mitochondria",
+        "explanation": "Irreversibility is marked by inability to restore mitochondrial function (large flocculent amorphous densities) and profound membrane damage. The other changes are reversible." }
+    ]},
+    { "name": "Necrosis and apoptosis", "questions": [
+      { "text": "A patient has a myocardial infarction. Which type of necrosis is typically seen in the infarcted myocardium?",
+        "choices": ["Liquefactive", "Caseous", "Coagulative", "Fat necrosis", "Fibrinoid"],
+        "correct": "C", "difficulty": "easy", "tags": "necrosis,infarct",
+        "explanation": "Ischemic infarcts of solid organs (heart, kidney, spleen) show coagulative necrosis, with preserved tissue architecture for some days. The brain is the exception, where infarction produces liquefactive necrosis." },
+      { "text": "Which of the following is the key mediator of the execution phase of apoptosis?",
+        "choices": ["Caspase-3", "Bcl-2", "RIPK1", "Lysosomal hydrolases", "Calpain"],
+        "correct": "A", "difficulty": "medium", "tags": "apoptosis,caspase",
+        "explanation": "Executioner caspases (3 and 6) cleave cellular substrates and activate DNases, producing the apoptotic phenotype. Bcl-2 is anti-apoptotic, and RIPK1 is involved in necroptosis." },
+      { "text": "Which adaptation is expected in the uterus during normal pregnancy?",
+        "choices": ["Atrophy only", "Hyperplasia only", "Hypertrophy only", "Both hypertrophy and hyperplasia", "Metaplasia"],
+        "correct": "D", "difficulty": "easy", "tags": "adaptation",
+        "explanation": "Pregnancy-related uterine enlargement results from estrogen-driven smooth muscle hypertrophy and hyperplasia." }
+    ]}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "subject": "Patho 2", "subjectOrder": 2,
+  "chapter": "Renal Pathology: Glomerular Diseases", "chapterOrder": 2,
+  "description": "Nephritic and nephrotic syndromes.",
+  "topics": [
+    { "name": "Nephrotic syndrome", "questions": [
+      { "text": "A 5-year-old child presents with periorbital edema and heavy proteinuria. Light microscopy of the glomeruli is normal. What does electron microscopy most likely show?",
+        "choices": ["Subepithelial humps", "Effacement of podocyte foot processes", "Tram-track appearance", "Spike and dome pattern", "Subendothelial deposits"],
+        "correct": "B", "difficulty": "easy", "tags": "nephrotic,minimal change",
+        "explanation": "This is minimal change disease, the most common cause of nephrotic syndrome in children. Light microscopy is normal; EM shows diffuse effacement of podocyte foot processes." }
+    ]}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "subject": "Patho 2", "subjectOrder": 2,
+  "chapter": "Cardiovascular System: Ischemic Heart Disease", "chapterOrder": 1,
+  "description": "Atherosclerosis, angina, myocardial infarction and complications.",
+  "topics": [
+    { "name": "Myocardial infarction", "questions": [
+      { "text": "Which of the following is the earliest serum marker to rise after myocardial infarction and the most specific?",
+        "choices": ["CK-MB", "Troponin", "LDH", "AST", "Myoglobin"],
+        "correct": "B", "difficulty": "easy", "tags": "MI,biomarkers",
+        "explanation": "Cardiac troponins (I and T) rise within 2 to 4 hours, peak around 24 hours and are the most sensitive and specific markers. Myoglobin rises earlier but is nonspecific." },
+      { "text": "Ventricular free wall rupture after myocardial infarction most commonly occurs at which time?",
+        "choices": ["Within 24 hours", "3 to 7 days", "2 to 3 weeks", "2 months", "1 year"],
+        "correct": "B", "difficulty": "medium", "tags": "MI,complications",
+        "explanation": "Rupture occurs 3 to 7 days after MI, when the necrotic myocardium is softest because of macrophage-mediated lysis, before granulation tissue gives strength." }
+    ]}
+  ]
+}

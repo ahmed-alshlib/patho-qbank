@@ -1,0 +1,3 @@
+# One email per line. Only these emails can create an account.
+aelshlib@gmail.com
+student@example.com

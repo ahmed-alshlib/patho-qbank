@@ -1,0 +1,17 @@
+{
+  "subject": "Patho 1", "subjectOrder": 1,
+  "chapter": "Acute and Chronic Inflammation", "chapterOrder": 2,
+  "description": "Vascular and cellular events, mediators, outcomes, granulomas.",
+  "topics": [
+    { "name": "Acute inflammation", "questions": [
+      { "text": "Which cell type predominates in the inflammatory infiltrate during the first 6 to 24 hours of acute inflammation?",
+        "choices": ["Monocytes", "Neutrophils", "Eosinophils", "Plasma cells", "Lymphocytes"],
+        "correct": "B", "difficulty": "easy", "tags": "acute,neutrophil",
+        "explanation": "Neutrophils predominate in the first 6 to 24 hours, followed by monocytes/macrophages at 24 to 48 hours." },
+      { "text": "Which mediator is primarily responsible for the vasodilation and increased vascular permeability seen immediately after tissue injury?",
+        "choices": ["IL-1", "Histamine", "Leukotriene B4", "C5a", "TNF"],
+        "correct": "B", "difficulty": "medium", "tags": "mediators,histamine",
+        "explanation": "Histamine, released from mast cells, causes arteriolar dilation and venular endothelial contraction (immediate transient response). LTB4 and C5a are chemotactic." }
+    ]}
+  ]
+}
