@@ -1,5 +1,5 @@
 import { eq, asc } from "drizzle-orm";
-import { db, subjects, chapters, topics, questions, userAnswers } from "@/db";
+import { db, subjects, chapters, topics, questions, userAnswers, bookmarks, notes } from "@/db";
 
 export type ChapterStat = {
   id: string; name: string; description: string; subjectId: string; subjectName: string;
@@ -69,8 +69,21 @@ export async function getOverview(userId: string) {
   const totalAttempts = rows.length;
   const avgTime = totalAttempts ? Math.round(rows.reduce((s, r) => s + r.timeSpentSec, 0) / totalAttempts) : 0;
 
-  return { completed, correct, incorrect: completed - correct, accuracy: completed ? Math.round((correct / completed) * 100) : null,
+  const daily = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (13 - i));
+    const key = dayKey(d);
+    return { key, label: d.toLocaleDateString("en", { weekday: "short" }), count: rows.filter((r) => dayKey(r.answeredAt) === key).length };
+  });
+
+  return { daily, completed, correct, incorrect: completed - correct, accuracy: completed ? Math.round((correct / completed) * 100) : null,
     answeredToday, streak, totalAttempts, avgTime };
 }
 
 export function pct(n: number, d: number) { return d ? Math.round((n / d) * 100) : 0; }
+
+export async function getCounts(userId: string) {
+  const bm = await db.select({ id: bookmarks.id }).from(bookmarks).where(eq(bookmarks.userId, userId));
+  const nt = await db.select({ id: notes.id }).from(notes).where(eq(notes.userId, userId));
+  const latest = await latestAnswers(userId);
+  return { bookmarks: bm.length, notes: nt.length, incorrect: [...latest.values()].filter((a) => !a.isCorrect).length };
+}

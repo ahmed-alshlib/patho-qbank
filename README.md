@@ -34,8 +34,9 @@ One JSON file per chapter in `content/` (see `content/patho1-cell-injury.json`),
 Warning: re-loading a chapter deletes students' answers for that chapter, so finish the content before launch.
 
 ## Built so far
-Phase 1: login/register, dashboard, subjects/chapters, question solving with explanations (graded on the server), progress.
-The database already has tables for bookmarks, highlights, notes, tests and reports (Phases 2-4).
+- Phase 1: login/register, dashboard, subjects/chapters, question solving with explanations (graded on the server), progress.
+- Phase 2: bookmarks, text highlights (question + explanation), personal notes, incorrect-questions list with retry, report a question, search and subject filter, keyboard shortcuts, light/dark theme.
+- Next: Phase 3 (custom tests, timed mode, results, history) and Phase 4 (topic analytics, weak-area recommendations). Tables already exist.
 
 ## Still to add before launch
 Password reset, login rate limiting.

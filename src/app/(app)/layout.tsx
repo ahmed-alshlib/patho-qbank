@@ -1,34 +1,52 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LogOut, Microscope } from "lucide-react";
 import { getUser } from "@/lib/auth";
+import { getCounts } from "@/lib/stats";
 import { logout } from "../actions-auth";
+import NavLinks from "@/components/NavLinks";
+import ThemeToggle from "@/components/ThemeToggle";
 
-const NAV = [
-  { href: "/", label: "Dashboard" },
-  { href: "/subjects", label: "Subjects" },
-  { href: "/progress", label: "Progress" },
-];
+function Brand() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white shadow-soft"><Microscope className="h-5 w-5" /></span>
+      <span className="font-display text-xl font-semibold tracking-tight">Patho QBank</span>
+    </div>
+  );
+}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser();
   if (!user) redirect("/login");
+  const counts = await getCounts(user.id);
+  const badges = { "/incorrect": counts.incorrect };
+  const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+
   return (
-    <div className="min-h-screen md:flex">
-      <aside className="border-b border-slate-200 bg-white md:min-h-screen md:w-56 md:border-b-0 md:border-r">
-        <div className="flex items-center justify-between p-4 md:block">
-          <div className="text-lg font-semibold text-brand-700">Patho QBank</div>
-          <div className="hidden pt-1 text-xs text-slate-500 md:block">{user.name}</div>
+    <div className="min-h-screen lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 border-r border-line bg-surface/70 p-5 backdrop-blur lg:flex">
+        <Brand />
+        <nav className="flex flex-col gap-1"><NavLinks variant="side" badges={badges} /></nav>
+        <div className="mt-auto space-y-3 rounded-2xl border border-line bg-surface p-3">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-brand2 text-sm font-bold text-white">{initials}</span>
+            <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{user.name}</div><div className="truncate text-xs text-muted">{user.email}</div></div>
+          </div>
+          <div className="flex gap-2">
+            <ThemeToggle className="flex-1" />
+            <form action={logout} className="flex-1"><button className="btn-ghost w-full !py-2.5 text-xs" aria-label="Log out"><LogOut className="h-4 w-4" />Log out</button></form>
+          </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:px-3">
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">{n.label}</Link>
-          ))}
-          <form action={logout}>
-            <button className="w-full whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-100">Logout</button>
-          </form>
-        </nav>
       </aside>
-      <main className="flex-1 p-4 md:p-8"><div className="mx-auto max-w-4xl">{children}</div></main>
+
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-bg/80 px-4 py-3 backdrop-blur lg:hidden">
+        <Brand />
+        <div className="flex gap-2"><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
+      </header>
+
+      <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">{children}</div></main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/90 backdrop-blur lg:hidden"><NavLinks variant="bottom" badges={badges} /></nav>
     </div>
   );
 }
