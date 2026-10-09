@@ -81,7 +81,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
 
       <div className="flex flex-wrap gap-1.5">
         {questions.map((x, n) => {
-          const tone = answers[x.id] ? "bg-brand text-white dark:text-bg" : "bg-raised text-muted";
+          const tone = answers[x.id] ? "bg-brand text-white" : "bg-raised text-muted";
           return (
             <button key={x.id} onClick={() => go(n)} title={`Question ${n + 1}`} className={`relative grid h-8 min-w-8 place-items-center rounded-lg px-1 text-xs font-semibold transition hover:scale-110 ${tone} ${n === i ? "ring-2 ring-brand ring-offset-2 ring-offset-bg" : ""}`}>
               {n + 1}{flagged.has(x.id) && <Flag className="absolute -right-1 -top-1 h-3 w-3 fill-warn text-warn" />}
@@ -90,7 +90,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
         })}
       </div>
 
-      <div key={q.id} className="card animate-rise space-y-6 !p-6 sm:!p-8">
+      <div key={q.id} className="card card-solid animate-rise space-y-6 !p-6 sm:!p-8">
         <div className="flex items-start justify-between gap-3">
           <span className="chip">Question {i + 1} of {questions.length}</span>
           <div className="flex gap-1">
@@ -117,7 +117,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
             const on = answers[q.id] === c.id;
             return (
               <button key={c.id} onClick={() => choose(c.id)} className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition duration-200 ${on ? "border-brand bg-brand/10 shadow-glow" : "border-line hover:border-brand/50 hover:bg-raised"}`}>
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-bold ${on ? "bg-brand text-white dark:text-bg" : "bg-raised text-muted"}`}>{c.label}</span>
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-bold ${on ? "bg-brand text-white" : "bg-raised text-muted"}`}>{c.label}</span>
                 <span className="text-[15px] leading-snug">{c.text}</span>
                 <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] text-muted sm:block">{n + 1}</kbd>
               </button>
@@ -136,8 +136,8 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
       </div>
 
       {confirm && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => !finishing && setConfirm(false)}>
-          <div className="card animate-pop w-full max-w-sm space-y-4 !p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4 backdrop-blur-sm" onClick={() => !finishing && setConfirm(false)}>
+          <div className="glass-float animate-pop w-full max-w-sm space-y-4 !p-6" onClick={(e) => e.stopPropagation()}>
             <span className={`grid h-12 w-12 place-items-center rounded-2xl ${unanswered ? "bg-warn/15 text-warn" : "bg-good/15 text-good"}`}><AlertTriangle className="h-6 w-6" /></span>
             <h2 className="text-2xl font-semibold">Finish this exam?</h2>
             <p className="text-sm text-muted">{unanswered ? `You have ${unanswered} unanswered question${unanswered === 1 ? "" : "s"}.` : "You answered every question."}{flagged.size ? ` ${flagged.size} flagged for review.` : ""} You can't change answers after finishing.</p>

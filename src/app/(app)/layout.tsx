@@ -25,7 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen lg:flex">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 border-r border-line bg-surface/70 p-5 backdrop-blur lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 border-r border-line bg-[rgb(var(--glass)/.62)] p-5 backdrop-blur-2xl backdrop-saturate-150 lg:flex">
         <Brand />
         <Link href="/session/new" className="btn !py-3"><Plus className="h-4 w-4" />New session</Link>
         <nav className="flex flex-col gap-1"><NavLinks variant="side" badges={badges} /></nav>
@@ -41,14 +41,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-bg/80 px-4 py-3 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-[rgb(var(--glass)/.7)] px-4 py-3 backdrop-blur-xl lg:hidden">
         <Brand />
         <div className="flex gap-2"><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
       </header>
 
       <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">{children}</div></main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/90 backdrop-blur lg:hidden"><NavLinks variant="bottom" badges={badges} /></nav>
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-[rgb(var(--glass)/.82)] backdrop-blur-xl lg:hidden"><NavLinks variant="bottom" badges={badges} /></nav>
     </div>
   );
 }

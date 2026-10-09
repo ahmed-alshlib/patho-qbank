@@ -176,7 +176,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
         })}
       </div>
 
-      <div key={q.id + wrongFlash * 0} className="card animate-rise space-y-6 !p-6 sm:!p-8">
+      <div key={q.id + wrongFlash * 0} className="card card-solid animate-rise space-y-6 !p-6 sm:!p-8">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap gap-1.5">
             <span className="chip">{q.subject} · {q.chapter}</span>
@@ -221,7 +221,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
           {q.choices.map((c, n) => {
             const isRight = reveal?.correctChoiceId === c.id, isWrong = reveal && reveal.choiceId === c.id && !reveal.isCorrect, isSel = selected === c.id && !reveal;
             const cls = isRight ? "border-good bg-good/10" : isWrong ? "border-bad bg-bad/10" : isSel ? "border-brand bg-brand/10 shadow-glow" : reveal ? "border-line opacity-60" : "border-line hover:border-brand/50 hover:bg-raised";
-            const badge = isRight ? "bg-good text-white" : isWrong ? "bg-bad text-white" : isSel ? "bg-brand text-white dark:text-bg" : "bg-raised text-muted";
+            const badge = isRight ? "bg-good text-white" : isWrong ? "bg-bad text-white" : isSel ? "bg-brand text-white" : "bg-raised text-muted";
             return (
               <button key={c.id} disabled={!!reveal} onClick={() => setSelected(c.id)}
                 className={`group flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition duration-200 ${cls} ${isRight ? "animate-pop" : ""}`}>

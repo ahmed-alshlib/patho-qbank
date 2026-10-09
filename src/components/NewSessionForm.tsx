@@ -15,7 +15,7 @@ const MAX = 200;
 
 function Box({ state }: { state: "none" | "some" | "all" }) {
   return (
-    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border transition ${state === "none" ? "border-line bg-surface" : "border-brand bg-brand text-white dark:text-bg"}`}>
+    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border transition ${state === "none" ? "border-line bg-surface" : "border-brand bg-brand text-white"}`}>
       {state === "all" && <Check className="h-3.5 w-3.5" />}{state === "some" && <Minus className="h-3.5 w-3.5" />}
     </span>
   );
@@ -63,7 +63,7 @@ export default function NewSessionForm({ tree, counts }: { tree: Tree; counts: C
         {([["study", "Study mode", "See the correct answer and explanation right after each question. Best for learning.", BookOpenCheck],
            ["exam", "Exam mode", "Answer everything first. Results and explanations come at the end. Optional timer.", GraduationCap]] as const).map(([id, title, text, Icon]) => (
           <button key={id} onClick={() => setMode(id)} className={`card card-hover flex items-start gap-4 text-left ${mode === id ? "!border-brand shadow-glow" : ""}`}>
-            <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${mode === id ? "bg-brand text-white dark:text-bg" : "bg-brand/10 text-brand"}`}><Icon className="h-6 w-6" /></span>
+            <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${mode === id ? "bg-brand text-white" : "bg-brand/10 text-brand"}`}><Icon className="h-6 w-6" /></span>
             <span><span className="block font-display text-xl font-semibold">{title}</span><span className="mt-1 block text-sm text-muted">{text}</span></span>
           </button>
         ))}
@@ -167,7 +167,7 @@ export default function NewSessionForm({ tree, counts }: { tree: Tree; counts: C
 
       {mode && (
         <div className="fixed inset-x-0 bottom-16 z-20 px-4 lg:bottom-4 lg:left-64">
-          <div className="mx-auto flex max-w-3xl items-center gap-4 rounded-2xl border border-line bg-surface/95 p-3 pl-5 shadow-lift backdrop-blur">
+          <div className="mx-auto flex max-w-3xl items-center gap-4 glass-float !rounded-2xl p-3 pl-5">
             <div className="min-w-0 flex-1 text-sm">
               <div className="font-semibold">{effective} question{effective === 1 ? "" : "s"} · {mode === "study" ? "Study mode" : timed ? `Exam · ${minutes} min` : "Exam · untimed"}</div>
               <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : selected.size === 0 ? "Select chapters or topics above" : `${available} available in your selection`}</div>

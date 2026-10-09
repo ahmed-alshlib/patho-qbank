@@ -13,8 +13,8 @@ export default {
         good: v("good"), bad: v("bad"), warn: v("warn"),
       },
       fontFamily: {
-        sans: ['"Inter Variable"', "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ['"Fraunces Variable"', "ui-serif", "Georgia", "serif"],
+        sans: ['"Inter Variable"', "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
+        display: ['"Inter Variable"', "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
       },
       boxShadow: {
         soft: "0 1px 2px rgb(var(--shadow) / .06), 0 8px 24px -8px rgb(var(--shadow) / .12)",
