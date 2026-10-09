@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices, tests, testQuestions } from "@/db";
 import { latestCte, TZ } from "@/lib/stats";
 import { latestForQuestions } from "@/lib/questions";
+import { accessibleSubjectIds } from "@/lib/access";
 
 const rows = <T,>(r: unknown) => Array.from(r as ArrayLike<T>);
 
@@ -10,7 +11,8 @@ export type Tree = { subjects: { id: string; name: string; chapters: { id: strin
 export type Counts = Record<string, Record<string, number[]>>;
 
 export async function getSessionTree(userId: string): Promise<{ tree: Tree; counts: Counts }> {
-  const s = await db.select().from(subjects).orderBy(asc(subjects.order));
+  const allowed = await accessibleSubjectIds(userId);
+  const s = (await db.select().from(subjects).orderBy(asc(subjects.order))).filter((x) => allowed.has(x.id));
   const c = await db.select().from(chapters).orderBy(asc(chapters.order));
   const t = await db.select().from(topics).orderBy(asc(topics.order));
   const tree: Tree = {

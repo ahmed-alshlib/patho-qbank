@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { db, answerChoices, bookmarks, chapters, questions, testQuestions, tests, topics, userAnswers } from "@/db";
 import { getUser } from "@/lib/auth";
 import { latestForQuestions, type Reveal } from "@/lib/questions";
+import { accessibleSubjectIds, assertQuestionAccess } from "@/lib/access";
 
 async function me() {
   const user = await getUser();
@@ -47,9 +48,11 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
   const count = Math.max(1, Math.min(MAX_QUESTIONS, Math.floor(input.count) || 0));
   const minutes = Math.max(1, Math.min(360, Math.floor(input.minutes) || 0));
 
+  const allowed = [...(await accessibleSubjectIds(user.id))];
+  if (!allowed.length) return { error: "Subscribe to a subject first to create a session." };
   let cands = await db.select({ id: questions.id })
     .from(questions).innerJoin(topics, eq(questions.topicId, topics.id)).innerJoin(chapters, eq(topics.chapterId, chapters.id))
-    .where(and(inArray(questions.topicId, input.topicIds.slice(0, 500)), inArray(questions.difficulty, diffs)))
+    .where(and(inArray(questions.topicId, input.topicIds.slice(0, 500)), inArray(questions.difficulty, diffs), inArray(chapters.subjectId, allowed)))
     .orderBy(asc(chapters.order), asc(topics.order), asc(questions.order));
   let ids = cands.map((c) => c.id);
 
@@ -79,6 +82,7 @@ export async function answerInSession(testId: string, questionId: string, choice
   const [tq] = await db.select({ id: testQuestions.id }).from(testQuestions).where(and(eq(testQuestions.testId, testId), eq(testQuestions.questionId, questionId))).limit(1);
   if (!tq) throw new Error("Question is not part of this session.");
 
+  await assertQuestionAccess(user.id, questionId);
   const choices = await db.select().from(answerChoices).where(eq(answerChoices.questionId, questionId));
   const picked = choices.find((c) => c.id === choiceId), correct = choices.find((c) => c.isCorrect);
   if (!picked || !correct) throw new Error("Invalid choice");

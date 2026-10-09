@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices, bookmarks, notes, highlights, userAnswers } from "@/db";
 import { latestCte } from "@/lib/stats";
+import { accessibleSubjectIds } from "@/lib/access";
 
 export type Reveal = { choiceId: string; isCorrect: boolean; correctChoiceId: string; explanation: string };
 export type Hl = { id: string; target: "question" | "explanation"; start: number; end: number };
@@ -25,7 +26,7 @@ export async function latestForQuestions(userId: string, ids: string[], testId?:
 /** Loads questions (in the given order) together with this student's own answers, bookmarks, notes and highlights. */
 export async function loadStudyQuestions(userId: string, opts: { chapterId?: string; ids?: string[]; testId?: string; exam?: boolean }): Promise<StudyQuestion[]> {
   const base = db
-    .select({ q: questions, topic: topics.name, chapter: chapters.name, subject: subjects.name })
+    .select({ q: questions, topic: topics.name, chapter: chapters.name, subject: subjects.name, subjectId: subjects.id })
     .from(questions)
     .innerJoin(topics, eq(questions.topicId, topics.id))
     .innerJoin(chapters, eq(topics.chapterId, chapters.id))
@@ -39,6 +40,8 @@ export async function loadStudyQuestions(userId: string, opts: { chapterId?: str
     rows = found.sort((a, b) => pos.get(a.q.id)! - pos.get(b.q.id)!);
   } else return [];
 
+  const allowed = await accessibleSubjectIds(userId);
+  rows = rows.filter((r) => allowed.has(r.subjectId));
   const ids = rows.map((r) => r.q.id);
   if (!ids.length) return [];
   const choices = await db.select().from(answerChoices).where(inArray(answerChoices.questionId, ids)).orderBy(asc(answerChoices.label));
@@ -89,7 +92,8 @@ export type ReviewItem = {
 
 export async function getReviewItems(userId: string, kind: ReviewKind, filter: { q?: string; subjectId?: string }): Promise<{ items: ReviewItem[]; ids: string[]; subjects: { id: string; name: string }[] }> {
   const ids = await reviewIds(userId, kind);
-  const allSubjects = await db.select({ id: subjects.id, name: subjects.name }).from(subjects).orderBy(asc(subjects.order));
+  const allowed = await accessibleSubjectIds(userId);
+  const allSubjects = (await db.select({ id: subjects.id, name: subjects.name }).from(subjects).orderBy(asc(subjects.order))).filter((x) => allowed.has(x.id));
   if (!ids.length) return { items: [], ids: [], subjects: allSubjects };
 
   const rows = await db
@@ -104,6 +108,7 @@ export async function getReviewItems(userId: string, kind: ReviewKind, filter: {
 
   const needle = filter.q?.trim().toLowerCase();
   const items = rows
+    .filter((r) => allowed.has(r.subjectId))
     .map((r): ReviewItem => ({
       id: r.q.id, text: r.q.questionText, subjectId: r.subjectId, subject: r.subject, chapter: r.chapter, topic: r.topic, difficulty: r.q.difficulty,
       note: nts.find((n) => n.questionId === r.q.id)?.body ?? "", highlightCount: hls.filter((h) => h.id === r.q.id).length, bookmarked: bmSet.has(r.q.id),

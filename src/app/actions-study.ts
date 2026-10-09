@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db, answerChoices, questions, userAnswers, bookmarks, notes, highlights, reportedQuestions } from "@/db";
 import { getUser } from "@/lib/auth";
 import type { Reveal } from "@/lib/questions";
+import { assertQuestionAccess } from "@/lib/access";
 
 async function me() {
   const user = await getUser();
@@ -14,6 +15,7 @@ async function me() {
 /** Grades on the server so correct answers are never sent to the browser before a student answers. */
 export async function submitAnswer(questionId: string, choiceId: string, timeSpentSec: number): Promise<Reveal> {
   const user = await me();
+  await assertQuestionAccess(user.id, questionId);
   const [q] = await db.select().from(questions).where(eq(questions.id, questionId)).limit(1);
   if (!q) throw new Error("Question not found");
   const choices = await db.select().from(answerChoices).where(eq(answerChoices.questionId, questionId));

@@ -28,7 +28,7 @@ export const getUser = cache(async () => {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
-    const [user] = await db.select({ id: users.id, name: users.name, email: users.email })
+    const [user] = await db.select({ id: users.id, name: users.name, email: users.email, isAdmin: users.isAdmin })
       .from(users).where(eq(users.id, payload.uid as string)).limit(1);
     return user ?? null;
   } catch (e) {

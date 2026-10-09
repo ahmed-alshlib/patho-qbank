@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listSessions } from "@/lib/sessions";
+import { accessibleSubjectIds } from "@/lib/access";
 import { ArrowRight, Plus, CircleX, Clock, Flame, Star, StickyNote, Target, Zap } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getChapterStats, getCounts, getOverview, pct } from "@/lib/stats";
@@ -18,6 +19,7 @@ export default async function Dashboard() {
   const weak = chapters.filter((c) => c.completed >= 1 && c.accuracy !== null).sort((a, b) => a.accuracy! - b.accuracy!).slice(0, 3);
   const next = recent.find((c) => c.completed < c.total) ?? chapters.find((c) => c.completed < c.total) ?? chapters[0];
   const open = (await listSessions(user.id, 5)).filter((x) => !x.finishedAt);
+  const hasAccess = (await accessibleSubjectIds(user.id)).size > 0;
   const donePct = pct(o.completed, totalQ);
 
   return (
@@ -42,6 +44,14 @@ export default async function Dashboard() {
             </Link>
           )}
         </section>
+
+        {!hasAccess && (
+          <Link href="/plans" className="card card-hover flex items-center gap-4 !border-warn/40">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-warn/15 text-warn"><Star className="h-5 w-5" /></span>
+            <div className="flex-1"><div className="font-semibold">Choose your subjects</div><div className="text-xs text-muted">Subscribe to a subject to unlock its questions.</div></div>
+            <ArrowRight className="h-4 w-4 text-muted" />
+          </Link>
+        )}
 
         <section className="grid gap-3 sm:grid-cols-2">
           <Link href="/session/new" className="card card-hover group flex items-center gap-4 !border-brand/30 !bg-brand/5 !p-4">

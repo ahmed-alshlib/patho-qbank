@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { accessibleSubjectIds } from "@/lib/access";
 import { eq } from "drizzle-orm";
 import { db, chapters, subjects } from "@/db";
 import { getUser } from "@/lib/auth";
@@ -12,9 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function StudyPage({ params }: { params: Promise<{ chapterId: string }> }) {
   const { chapterId } = await params;
   const user = (await getUser())!;
-  const [ch] = await db.select({ id: chapters.id, name: chapters.name, subject: subjects.name })
+  const [ch] = await db.select({ id: chapters.id, name: chapters.name, subject: subjects.name, subjectId: subjects.id })
     .from(chapters).innerJoin(subjects, eq(chapters.subjectId, subjects.id)).where(eq(chapters.id, chapterId)).limit(1);
   if (!ch) notFound();
+  if (!(await accessibleSubjectIds(user.id)).has(ch.subjectId)) redirect(`/plans?need=${ch.subjectId}`);
 
   const data = await loadStudyQuestions(user.id, { chapterId });
   if (!data.length) return <EmptyState icon={<BookOpen className="h-6 w-6" />} title="No questions yet" text="This chapter has no questions yet." />;

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LogOut, Microscope, Plus } from "lucide-react";
+import { CreditCard, LogOut, Microscope, Plus } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getCounts } from "@/lib/stats";
 import { logout } from "../actions-auth";
@@ -11,7 +11,7 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white shadow-soft"><Microscope className="h-5 w-5" /></span>
-      <span className="font-display text-xl font-semibold tracking-tight">Patho QBank</span>
+      <span className="font-display text-xl font-semibold tracking-tight">Medical QBank</span>
     </div>
   );
 }
@@ -19,6 +19,7 @@ function Brand() {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser();
   if (!user) redirect("/login");
+  if (user.isAdmin) redirect("/admin");
   const counts = await getCounts(user.id);
   const badges = { "/incorrect": counts.incorrect };
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -43,7 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-[rgb(var(--glass)/.7)] px-4 py-3 backdrop-blur-xl lg:hidden">
         <Brand />
-        <div className="flex gap-2"><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
+        <div className="flex gap-2"><Link href="/plans" aria-label="Subscriptions" className="btn-ghost !p-2.5"><CreditCard className="h-4 w-4" /></Link><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
       </header>
 
       <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">{children}</div></main>

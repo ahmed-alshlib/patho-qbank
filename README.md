@@ -1,4 +1,4 @@
-# Patho QBank
+# Medical QBank
 
 Student-only pathology question bank. Next.js 15 + TypeScript + Postgres (Supabase) + Drizzle + Tailwind. Deploys on Vercel.
 
@@ -26,8 +26,8 @@ npm run dev          # http://localhost:3000
 3. Environment Variables: add `DATABASE_URL` and `SESSION_SECRET` (same values as `.env`). `DIRECT_URL` is not needed on Vercel.
 4. Deploy.
 
-## Access control
-No open sign-up. Only emails in `content/approved-emails.txt` can create an account. Edit the file, then run `npm run db:seed`.
+## Access and subscriptions
+Anyone can create an account. Each subject is a separate package (price set in Admin, Settings). A student requests a subject, pays by bank transfer, sends the receipt on WhatsApp with their reference code, and an admin approves it in Admin, Requests. Access lasts 3 months from approval. Admins (users.is_admin = true) see everything and can grant or revoke subjects.
 
 ## Adding questions
 One JSON file per chapter in `content/` (see `content/patho1-cell-injury.json`), then `npm run db:seed`.
@@ -37,6 +37,7 @@ Warning: re-loading a chapter deletes students' answers for that chapter, so fin
 - Phase 1: login/register, dashboard, subjects/chapters, question solving with explanations (graded on the server), progress.
 - Phase 2: bookmarks, text highlights, personal notes, incorrect-questions list with retry, report a question, search and subject filter, keyboard shortcuts, light/dark theme.
 - Phase 3: Create session (study or exam mode, pick chapters/topics, question pool, difficulty, count, optional timer), results page with per-chapter/topic breakdown, history, retry incorrect. Highlights on the question text are temporary (not saved, cleared when answered); explanation highlights are saved.
+- Admin: requests approval, students, reports, prices and bank details. Subscriptions per subject.
 - Next: Phase 4 (topic analytics, weak-area recommendations).
 
 ## Still to add before launch

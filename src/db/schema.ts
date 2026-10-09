@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: createdAt(),
 });
 
@@ -24,6 +25,7 @@ export const users = pgTable("users", {
 export const subjects = pgTable("subjects", {
   id: id(),
   name: text("name").notNull(),
+  price: integer("price").notNull().default(0),
   order: integer("order").notNull().default(0),
 });
 
@@ -133,5 +135,26 @@ export const reportedQuestions = pgTable("reported_questions", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   questionId: text("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
   reason: text("reason").notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: createdAt(),
+});
+
+// ---------- Subscriptions (one package per subject, 3 months from approval) ----------
+export const subscriptions = pgTable("subscriptions", {
+  id: id(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subjectId: text("subject_id").notNull().references(() => subjects.id, { onDelete: "cascade" }),
+  /** pending | active | rejected | revoked */
+  status: text("status").notNull().default("pending"),
+  reference: text("reference").notNull(),
+  price: integer("price").notNull().default(0),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index("subscriptions_user_idx").on(t.userId), index("subscriptions_status_idx").on(t.status)]);
+
+// Admin-editable key/value settings (bank details, WhatsApp number...).
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
 });

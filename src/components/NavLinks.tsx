@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, CircleX, History, LayoutDashboard, PlusCircle, Star, StickyNote } from "lucide-react";
+import { CreditCard, BarChart3, BookOpen, CircleX, History, LayoutDashboard, PlusCircle, Star, StickyNote } from "lucide-react";
 
 const ITEMS: { href: string; label: string; icon: typeof History; bottom?: boolean }[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, bottom: true },
@@ -12,9 +12,11 @@ const ITEMS: { href: string; label: string; icon: typeof History; bottom?: boole
   { href: "/incorrect", label: "Incorrect", icon: CircleX },
   { href: "/notes", label: "Notes & Highlights", icon: StickyNote },
   { href: "/progress", label: "Progress", icon: BarChart3, bottom: true },
+  { href: "/plans", label: "Subscriptions", icon: CreditCard },
 ];
 
 export default function NavLinks({ variant, badges }: { variant: "side" | "bottom"; badges?: Record<string, number> }) {
+  const items = ITEMS;
   const path = usePathname();
   const active = (href: string) =>
     href === "/" ? path === "/"
@@ -24,7 +26,7 @@ export default function NavLinks({ variant, badges }: { variant: "side" | "botto
   if (variant === "bottom")
     return (
       <>
-        {ITEMS.filter((i) => i.bottom).map(({ href, label, icon: Icon }) => (
+        {items.filter((i) => i.bottom).map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} aria-label={label} data-active={active(href)}
             className="relative grid flex-1 place-items-center py-3 text-muted transition data-[active=true]:text-brand">
             <Icon className="h-5 w-5" />
@@ -36,7 +38,7 @@ export default function NavLinks({ variant, badges }: { variant: "side" | "botto
     );
   return (
     <>
-      {ITEMS.map(({ href, label, icon: Icon }) => (
+      {items.map(({ href, label, icon: Icon }) => (
         <Link key={href} href={href} data-active={active(href)} className="nav-link">
           <Icon className="h-[18px] w-[18px]" />{label}
           {!!badges?.[href] && <span className="ml-auto rounded-full bg-bad/15 px-2 py-0.5 text-[11px] font-semibold text-bad">{badges[href]}</span>}
