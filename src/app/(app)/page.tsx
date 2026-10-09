@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CircleX, Clock, Flame, Star, StickyNote, Target, Zap } from "lucide-react";
+import { listSessions } from "@/lib/sessions";
+import { ArrowRight, Plus, CircleX, Clock, Flame, Star, StickyNote, Target, Zap } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getChapterStats, getCounts, getOverview, pct } from "@/lib/stats";
 import { Bar, ProgressRing, Stat } from "@/components/ui";
@@ -16,6 +17,7 @@ export default async function Dashboard() {
   const recent = chapters.filter((c) => c.lastAnsweredAt).sort((a, b) => b.lastAnsweredAt! - a.lastAnsweredAt!).slice(0, 3);
   const weak = chapters.filter((c) => c.completed >= 1 && c.accuracy !== null).sort((a, b) => a.accuracy! - b.accuracy!).slice(0, 3);
   const next = recent.find((c) => c.completed < c.total) ?? chapters.find((c) => c.completed < c.total) ?? chapters[0];
+  const open = (await listSessions(user.id, 5)).filter((x) => !x.finishedAt);
   const donePct = pct(o.completed, totalQ);
 
   return (
@@ -39,6 +41,21 @@ export default async function Dashboard() {
               {o.completed ? "Continue" : "Start"}: {next.name.length > 22 ? next.name.slice(0, 22) + "…" : next.name}<ArrowRight className="h-4 w-4" />
             </Link>
           )}
+        </section>
+
+        <section className="grid gap-3 sm:grid-cols-2">
+          <Link href="/session/new" className="card card-hover group flex items-center gap-4 !border-brand/30 !bg-brand/5 !p-4">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand text-white"><Plus className="h-5 w-5" /></span>
+            <div className="flex-1"><div className="font-semibold">Create a session</div><div className="text-xs text-muted">Study or exam mode, pick chapters, topics and count</div></div>
+            <ArrowRight className="h-4 w-4 text-muted transition group-hover:translate-x-1 group-hover:text-brand" />
+          </Link>
+          {open.map((x) => (
+            <Link key={x.id} href={`/session/${x.id}`} className="card card-hover group flex items-center gap-4 !p-4">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-warn/10 text-warn"><Clock className="h-5 w-5" /></span>
+              <div className="flex-1"><div className="font-semibold">Resume {x.mode === "exam" ? "exam" : "study"} session</div><div className="text-xs text-muted">{x.answered}/{x.total} answered</div></div>
+              <ArrowRight className="h-4 w-4 text-muted transition group-hover:translate-x-1 group-hover:text-brand" />
+            </Link>
+          ))}
         </section>
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">

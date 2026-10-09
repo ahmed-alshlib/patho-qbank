@@ -1,17 +1,20 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Clock, Flag, Highlighter, Keyboard, RotateCcw, Star, StickyNote, Trophy, X } from "lucide-react";
 import { addHighlight, removeHighlights, reportQuestion, saveNote, submitAnswer, toggleBookmark } from "@/app/actions-study";
+import { answerInSession, finishSession } from "@/app/actions-session";
 import type { Hl, Reveal, StudyQuestion } from "@/lib/questions";
 import HighlightedText from "@/components/HighlightedText";
 import { ProgressRing } from "@/components/ui";
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-export default function StudyClient({ questions, startAt, title, backHref, backLabel, fresh = false }: {
-  questions: StudyQuestion[]; startAt: number; title: string; backHref: string; backLabel: string; fresh?: boolean;
+export default function StudyClient({ questions, startAt, title, backHref, backLabel, fresh = false, testId }: {
+  questions: StudyQuestion[]; startAt: number; title: string; backHref: string; backLabel: string; fresh?: boolean; testId?: string;
 }) {
+  const router = useRouter();
   const [i, setI] = useState(startAt);
   const [selected, setSelected] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, Reveal>>(Object.fromEntries(questions.filter((q) => q.previous).map((q) => [q.id, q.previous!])));
@@ -20,6 +23,10 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>(Object.fromEntries(questions.map((q) => [q.id, q.bookmarked])));
   const [notes, setNotes] = useState<Record<string, string>>(Object.fromEntries(questions.map((q) => [q.id, q.note])));
   const [hls, setHls] = useState<Record<string, Hl[]>>(Object.fromEntries(questions.map((q) => [q.id, q.highlights])));
+  // Highlights on the question text are temporary: never saved, cleared once the question is answered.
+  const [tempHls, setTempHls] = useState<Record<string, Hl[]>>({});
+  const tempId = useRef(0);
+  const [finishing, setFinishing] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteState, setNoteState] = useState<"idle" | "saving" | "saved">("idle");
   const [reportOpen, setReportOpen] = useState(false);
@@ -53,14 +60,22 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
     const secs = (Date.now() - startedAt.current) / 1000;
     const qid = q.id, ch = selected;
     start(async () => {
-      const r = await submitAnswer(qid, ch, secs);
+      const r = testId ? (await answerInSession(testId, qid, ch, secs))! : await submitAnswer(qid, ch, secs);
       setResults((m) => ({ ...m, [qid]: r }));
+      setTempHls((m) => ({ ...m, [qid]: [] }));
       setRetrying((m) => ({ ...m, [qid]: false }));
       if (!r.isCorrect) setWrongFlash((n) => n + 1);
     });
-  }, [selected, reveal, q.id]);
+  }, [selected, reveal, q.id, testId]);
 
-  const next = useCallback(() => (i < questions.length - 1 ? go(i + 1) : setFinished(true)), [i, questions.length, go]);
+  const finishNow = useCallback(async () => {
+    if (!testId) return setFinished(true);
+    setFinishing(true);
+    await finishSession(testId);
+    router.push(`/results/${testId}`);
+  }, [testId, router]);
+
+  const next = useCallback(() => (i < questions.length - 1 ? go(i + 1) : void finishNow()), [i, questions.length, go, finishNow]);
 
   // Keyboard: A-E / 1-5 choose, Enter submit or next, arrows navigate.
   useEffect(() => {
@@ -94,7 +109,12 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   }
 
   function onAddHl(target: Hl["target"], s: number, e: number) {
-    const qid = q.id, tmp = `tmp-${Math.random()}`;
+    const qid = q.id;
+    if (target === "question") {
+      setTempHls((m) => ({ ...m, [qid]: [...(m[qid] ?? []), { id: `t-${++tempId.current}`, target, start: s, end: e }] }));
+      return;
+    }
+    const tmp = `tmp-${Math.random()}`;
     setHls((m) => ({ ...m, [qid]: [...(m[qid] ?? []), { id: tmp, target, start: s, end: e }] }));
     addHighlight(qid, target, s, e)
       .then((id) => setHls((m) => ({ ...m, [qid]: m[qid].map((h) => (h.id === tmp ? { ...h, id } : h)) })))
@@ -102,8 +122,9 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   }
   function onRemoveHl(ids: string[]) {
     const qid = q.id;
-    setHls((m) => ({ ...m, [qid]: m[qid].filter((h) => !ids.includes(h.id)) }));
-    removeHighlights(ids.filter((x) => !x.startsWith("tmp-")));
+    setTempHls((m) => ({ ...m, [qid]: (m[qid] ?? []).filter((h) => !ids.includes(h.id)) }));
+    setHls((m) => ({ ...m, [qid]: (m[qid] ?? []).filter((h) => !ids.includes(h.id)) }));
+    removeHighlights(ids.filter((x) => !x.startsWith("tmp-") && !x.startsWith("t-")));
   }
 
   function sendReport() {
@@ -137,7 +158,10 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link href={backHref} className="inline-flex items-center gap-1 text-muted transition hover:text-ink"><ChevronLeft className="h-4 w-4" />{backLabel}</Link>
         <span className="font-medium">{title}</span>
-        <span className="chip tabular-nums"><Clock className="h-3.5 w-3.5" />{reveal ? "done" : fmt(elapsed)}</span>
+        <span className="flex items-center gap-2">
+          <span className="chip tabular-nums"><Clock className="h-3.5 w-3.5" />{reveal ? "done" : fmt(elapsed)}</span>
+          {testId && <button className="btn-ghost !px-3 !py-1.5 text-xs" disabled={finishing} onClick={() => void finishNow()}>End session</button>}
+        </span>
       </div>
 
       <div className="flex flex-wrap gap-1.5" aria-label="Question navigator">
@@ -171,9 +195,9 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
         </div>
 
         <div>
-          <HighlightedText text={q.text} highlights={(hls[q.id] ?? []).filter((h) => h.target === "question")}
+          <HighlightedText text={q.text} highlights={tempHls[q.id] ?? []}
             onAdd={(s, e) => onAddHl("question", s, e)} onRemove={onRemoveHl} className="text-[17px] leading-relaxed sm:text-lg" />
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Select text to highlight it. Click a highlight to remove it.</p>
+          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Highlights on the question are temporary and clear when you answer.</p>
         </div>
 
         {noteOpen && (
@@ -228,7 +252,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
             {reveal ? (
               <>
                 <button className="btn-ghost" onClick={() => { setRetrying((m) => ({ ...m, [q.id]: true })); setSelected(null); startedAt.current = Date.now(); setElapsed(0); }}><RotateCcw className="h-4 w-4" />Retry</button>
-                <button className="btn" onClick={next}>{i === questions.length - 1 ? "Finish" : "Next"}<ChevronRight className="h-4 w-4" /></button>
+                <button className="btn" onClick={next}>{finishing ? "Finishing…" : i === questions.length - 1 ? "Finish" : "Next"}<ChevronRight className="h-4 w-4" /></button>
               </>
             ) : (
               <button className="btn" disabled={!selected || pending} onClick={submit}>{pending ? "Checking…" : "Submit answer"}</button>

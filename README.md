@@ -35,8 +35,9 @@ Warning: re-loading a chapter deletes students' answers for that chapter, so fin
 
 ## Built so far
 - Phase 1: login/register, dashboard, subjects/chapters, question solving with explanations (graded on the server), progress.
-- Phase 2: bookmarks, text highlights (question + explanation), personal notes, incorrect-questions list with retry, report a question, search and subject filter, keyboard shortcuts, light/dark theme.
-- Next: Phase 3 (custom tests, timed mode, results, history) and Phase 4 (topic analytics, weak-area recommendations). Tables already exist.
+- Phase 2: bookmarks, text highlights, personal notes, incorrect-questions list with retry, report a question, search and subject filter, keyboard shortcuts, light/dark theme.
+- Phase 3: Create session (study or exam mode, pick chapters/topics, question pool, difficulty, count, optional timer), results page with per-chapter/topic breakdown, history, retry incorrect. Highlights on the question text are temporary (not saved, cleared when answered); explanation highlights are saved.
+- Next: Phase 4 (topic analytics, weak-area recommendations).
 
 ## Still to add before launch
 Password reset, login rate limiting.

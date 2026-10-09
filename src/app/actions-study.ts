@@ -47,9 +47,10 @@ export async function saveNote(questionId: string, body: string) {
     .onConflictDoUpdate({ target: [notes.userId, notes.questionId], set: { body: text, updatedAt: new Date() } });
 }
 
-export async function addHighlight(questionId: string, target: "question" | "explanation", start: number, end: number): Promise<string> {
+export async function addHighlight(questionId: string, target: "explanation", start: number, end: number): Promise<string> {
   const user = await me();
-  if (!["question", "explanation"].includes(target) || !Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start || end > 20000)
+  // Only explanation highlights are saved; highlights on the question text stay in the browser.
+  if (target !== "explanation" || !Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start || end > 20000)
     throw new Error("Invalid highlight");
   const [h] = await db.insert(highlights).values({ userId: user.id, questionId, target, start, end }).returning({ id: highlights.id });
   return h.id;

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { LogOut, Microscope } from "lucide-react";
+import Link from "next/link";
+import { LogOut, Microscope, Plus } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getCounts } from "@/lib/stats";
 import { logout } from "../actions-auth";
@@ -26,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen lg:flex">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 border-r border-line bg-surface/70 p-5 backdrop-blur lg:flex">
         <Brand />
+        <Link href="/session/new" className="btn !py-3"><Plus className="h-4 w-4" />New session</Link>
         <nav className="flex flex-col gap-1"><NavLinks variant="side" badges={badges} /></nav>
         <div className="mt-auto space-y-3 rounded-2xl border border-line bg-surface p-3">
           <div className="flex items-center gap-3">

@@ -112,6 +112,7 @@ export const notes = pgTable(
 export const tests = pgTable("tests", {
   id: id(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mode: text("mode").notNull().default("exam"), // "study" | "exam"
   timed: boolean("timed").notNull().default(false),
   timeLimitSec: integer("time_limit_sec"),
   randomized: boolean("randomized").notNull().default(true),

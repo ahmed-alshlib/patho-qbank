@@ -1,24 +1,30 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, CircleX, LayoutDashboard, Star, StickyNote } from "lucide-react";
+import { BarChart3, BookOpen, CircleX, History, LayoutDashboard, PlusCircle, Star, StickyNote } from "lucide-react";
 
-const ITEMS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/subjects", label: "Subjects", icon: BookOpen },
+const ITEMS: { href: string; label: string; icon: typeof History; bottom?: boolean }[] = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, bottom: true },
+  { href: "/subjects", label: "Subjects", icon: BookOpen, bottom: true },
+  { href: "/session/new", label: "New session", icon: PlusCircle, bottom: true },
+  { href: "/history", label: "History", icon: History, bottom: true },
   { href: "/bookmarks", label: "Bookmarks", icon: Star },
   { href: "/incorrect", label: "Incorrect", icon: CircleX },
   { href: "/notes", label: "Notes & Highlights", icon: StickyNote },
-  { href: "/progress", label: "Progress", icon: BarChart3 },
+  { href: "/progress", label: "Progress", icon: BarChart3, bottom: true },
 ];
 
 export default function NavLinks({ variant, badges }: { variant: "side" | "bottom"; badges?: Record<string, number> }) {
   const path = usePathname();
-  const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href) || (href === "/subjects" && (path.startsWith("/study"))));
+  const active = (href: string) =>
+    href === "/" ? path === "/"
+    : href === "/session/new" ? path === "/session/new"
+    : href === "/history" ? path.startsWith("/history") || path.startsWith("/results") || (path.startsWith("/session/") && path !== "/session/new")
+    : path.startsWith(href) || (href === "/subjects" && path.startsWith("/study"));
   if (variant === "bottom")
     return (
       <>
-        {ITEMS.map(({ href, label, icon: Icon }) => (
+        {ITEMS.filter((i) => i.bottom).map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} aria-label={label} data-active={active(href)}
             className="relative grid flex-1 place-items-center py-3 text-muted transition data-[active=true]:text-brand">
             <Icon className="h-5 w-5" />
