@@ -1,6 +1,6 @@
 "use server";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, users } from "@/db";
 import { createSession, destroySession } from "@/lib/auth";
@@ -101,6 +101,7 @@ export async function resetPassword(_: FormState, form: FormData): Promise<FormS
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db.update(users).set({ passwordHash, emailVerifiedAt: new Date() }).where(eq(users.email, email)).returning();
   if (!user) return { error: "Account not found.", email };
+  await db.execute(sql`delete from user_sessions where user_id = ${user.id}`); // sign out all old devices
   await clearLimit(`login:email:${email}`);
   await createSession(user.id);
   redirect(user.isAdmin ? "/admin" : "/");

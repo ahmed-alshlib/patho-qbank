@@ -19,7 +19,7 @@ function Brand() {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/api/auth/logout?k=1");
   if (user.isAdmin) redirect("/admin");
   const [counts, notices] = await Promise.all([getCounts(user.id), getExpiryNotices(user.id)]);
   const badges = { "/incorrect": counts.incorrect };

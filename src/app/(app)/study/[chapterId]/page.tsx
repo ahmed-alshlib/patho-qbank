@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { accessibleSubjectIds } from "@/lib/access";
 import { eq } from "drizzle-orm";
 import { db, chapters, subjects } from "@/db";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { loadStudyQuestions } from "@/lib/questions";
 import StudyClient from "@/components/StudyClient";
 import { EmptyState } from "@/components/ui";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StudyPage({ params }: { params: Promise<{ chapterId: string }> }) {
   const { chapterId } = await params;
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const [ch] = await db.select({ id: chapters.id, name: chapters.name, subject: subjects.name, subjectId: subjects.id })
     .from(chapters).innerJoin(subjects, eq(chapters.subjectId, subjects.id)).where(eq(chapters.id, chapterId)).limit(1);
   if (!ch) notFound();

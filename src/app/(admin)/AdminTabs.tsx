@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BookOpen, Flag, Settings as Cog, Users, Wallet } from "lucide-react";
+import { BookOpen, Flag, LayoutDashboard, Settings as Cog, Users, Wallet } from "lucide-react";
 
 const TABS = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard, href: "/admin?tab=overview" },
   { id: "requests", label: "Requests", icon: Wallet, href: "/admin?tab=requests" },
   { id: "students", label: "Students", icon: Users, href: "/admin?tab=students" },
   { id: "content", label: "Content", icon: BookOpen, href: "/admin/content" },

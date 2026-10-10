@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Clock, Flag, Highlighter, Keyboard, RotateCcw, Star, StickyNote, Trophy, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, Flag, Highlighter, Keyboard, RotateCcw, Star, StickyNote, Trophy, Users, X } from "lucide-react";
 import { addHighlight, removeHighlights, reportQuestion, saveNote, submitAnswer, toggleBookmark } from "@/app/actions-study";
 import { answerInSession, finishSession } from "@/app/actions-session";
 import type { Hl, Reveal, StudyQuestion } from "@/lib/questions";
@@ -243,6 +243,11 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
             </div>
             <HighlightedText text={reveal.explanation} highlights={(hls[q.id] ?? []).filter((h) => h.target === "explanation")}
               onAdd={(s, e) => onAddHl("explanation", s, e)} onRemove={onRemoveHl} className="text-sm leading-relaxed" />
+            {reveal.peers && (
+              <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted" data-testid="peer-stat">
+                <Users className="h-3.5 w-3.5" /><span><b className="text-ink">{reveal.peers.pct}%</b> of students got this right on their first try ({reveal.peers.n} students)</span>
+              </div>
+            )}
           </div>
         )}
 

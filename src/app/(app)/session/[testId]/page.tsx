@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { loadStudyQuestions } from "@/lib/questions";
 import { getTest, getTestQuestionIds } from "@/lib/sessions";
 import StudyClient from "@/components/StudyClient";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SessionPage({ params }: { params: Promise<{ testId: string }> }) {
   const { testId } = await params;
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const t = await getTest(user.id, testId);
   if (!t) notFound();
   if (t.finishedAt) redirect(`/results/${testId}`);

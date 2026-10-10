@@ -2,8 +2,9 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices, bookmarks, notes, highlights, userAnswers } from "@/db";
 import { latestCte } from "@/lib/stats";
 import { accessibleSubjectIds } from "@/lib/access";
+import { peerStats, type Peer } from "@/lib/peers";
 
-export type Reveal = { choiceId: string; isCorrect: boolean; correctChoiceId: string; explanation: string };
+export type Reveal = { choiceId: string; isCorrect: boolean; correctChoiceId: string; explanation: string; peers?: Peer | null };
 export type Hl = { id: string; target: "question" | "explanation"; start: number; end: number };
 export type StudyQuestion = {
   id: string; subject: string; chapter: string; topic: string; text: string; difficulty: string;
@@ -51,6 +52,7 @@ export async function loadStudyQuestions(userId: string, opts: { chapterId?: str
   // Only highlights on explanations are saved. Highlights on the question text are temporary.
   const hls = opts.exam ? [] : await db.select().from(highlights).where(and(eq(highlights.userId, userId), eq(highlights.target, "explanation"), inArray(highlights.questionId, ids)));
   const bmSet = new Set(bms.map((b) => b.id));
+  const peers = opts.exam ? new Map<string, Peer>() : await peerStats(ids.filter((id) => latest.has(id)));
 
   return rows.map((r) => {
     const cs = choices.filter((c) => c.questionId === r.q.id);
@@ -59,7 +61,7 @@ export async function loadStudyQuestions(userId: string, opts: { chapterId?: str
       id: r.q.id, subject: r.subject, chapter: r.chapter, topic: r.topic, text: r.q.questionText, difficulty: r.q.difficulty,
       choices: cs.map((c) => ({ id: c.id, label: c.label, text: c.text })),
       // Correct answers/explanations are only sent for questions the student has already answered (never in exams).
-      previous: prev && !opts.exam ? { choiceId: prev.choiceId!, isCorrect: prev.isCorrect, correctChoiceId: cs.find((c) => c.isCorrect)!.id, explanation: r.q.explanation } : null,
+      previous: prev && !opts.exam ? { choiceId: prev.choiceId!, isCorrect: prev.isCorrect, correctChoiceId: cs.find((c) => c.isCorrect)!.id, explanation: r.q.explanation, peers: peers.get(r.q.id) ?? null } : null,
       selected: opts.exam ? prev?.choiceId ?? null : null,
       bookmarked: bmSet.has(r.q.id),
       note: nts.find((n) => n.questionId === r.q.id)?.body ?? "",

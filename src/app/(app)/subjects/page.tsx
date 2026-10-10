@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { ArrowRight, BookOpen, Lock } from "lucide-react";
 import { accessibleSubjectIds } from "@/lib/access";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { getChapterStats, pct } from "@/lib/stats";
 import { EmptyState, ProgressRing } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function Subjects() {
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const stats = await getChapterStats(user.id);
   const allowed = await accessibleSubjectIds(user.id);
   const bySubject = new Map<string, typeof stats>();

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CircleX, Star, StickyNote } from "lucide-react";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { loadStudyQuestions, reviewIds, type ReviewKind } from "@/lib/questions";
 import StudyClient from "@/components/StudyClient";
 import { EmptyState } from "@/components/ui";
@@ -18,7 +18,7 @@ export default async function Practice({ params, searchParams }: { params: Promi
   const { start } = await searchParams;
   if (!(source in META)) notFound();
   const kind = source as ReviewKind, meta = META[kind];
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const ids = await reviewIds(user.id, kind);
   const data = await loadStudyQuestions(user.id, { ids });
   if (!data.length)

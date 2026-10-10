@@ -6,7 +6,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/api/auth/logout?k=1");
   if (!user.isAdmin) redirect("/");
   return (
     <div className="min-h-screen">

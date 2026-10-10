@@ -1,3 +1,4 @@
+import { peerStats } from "@/lib/peers";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices, tests, testQuestions } from "@/db";
 import { latestCte, TZ } from "@/lib/stats";
@@ -64,6 +65,7 @@ export type ResultItem = {
   subjectId: string; subject: string; chapterId: string; chapter: string; topicId: string; topic: string;
   choices: { id: string; label: string; text: string; isCorrect: boolean }[];
   chosenId: string | null; status: "correct" | "incorrect" | "unanswered";
+  peers: { pct: number; n: number } | null;
 };
 
 export async function getResults(userId: string, testId: string) {
@@ -81,6 +83,7 @@ export async function getResults(userId: string, testId: string) {
   const choices = ids.length ? await db.select().from(answerChoices).where(inArray(answerChoices.questionId, ids)).orderBy(asc(answerChoices.label)) : [];
   const latest = await latestForQuestions(userId, ids, testId);
 
+  const peers = await peerStats(r.map((x) => x.q.id));
   const items: ResultItem[] = r.map((x) => {
     const a = latest.get(x.q.id);
     return {
@@ -88,6 +91,7 @@ export async function getResults(userId: string, testId: string) {
       subjectId: x.subjectId, subject: x.subject, chapterId: x.chapterId, chapter: x.chapter, topicId: x.topicId, topic: x.topic,
       choices: choices.filter((c) => c.questionId === x.q.id).map((c) => ({ id: c.id, label: c.label, text: c.text, isCorrect: c.isCorrect })),
       chosenId: a?.choiceId ?? null, status: !a ? "unanswered" : a.isCorrect ? "correct" : "incorrect",
+      peers: peers.get(x.q.id) ?? null,
     };
   });
   return { test, items };

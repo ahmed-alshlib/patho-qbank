@@ -12,7 +12,7 @@ const G_ERRORS: Record<string, string> = {
   busy: "Too many attempts. Please wait a few minutes.",
 };
 
-export default function AuthForm({ mode, google, gError }: { mode: "login" | "register"; google?: boolean; gError?: string }) {
+export default function AuthForm({ mode, google, gError, kicked }: { mode: "login" | "register"; google?: boolean; gError?: string; kicked?: boolean }) {
   const [state, action, pending] = useActionState(mode === "login" ? login : register, undefined);
   return (
     <AuthShell>
@@ -26,6 +26,7 @@ export default function AuthForm({ mode, google, gError }: { mode: "login" | "re
           <input className="input" type="email" name="email" placeholder="Email" defaultValue={state?.email} required autoComplete="email" />
           <input className="input" type="password" name="password" placeholder="Password" required autoComplete={mode === "login" ? "current-password" : "new-password"} />
           {mode === "login" && <div className="text-right"><Link href="/forgot" className="text-xs font-medium text-brand">Forgot password?</Link></div>}
+          {kicked && <p className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm text-warn">You were signed out. An account can be used on 2 devices at a time, so signing in on another device signs out the oldest one.</p>}
           {gError && !state?.error && <p className="rounded-xl border border-bad/30 bg-bad/10 p-3 text-sm text-bad">{G_ERRORS[gError] ?? "Google sign-in failed. Please try again."}</p>}
           {state?.error && <p className="animate-shake rounded-xl border border-bad/30 bg-bad/10 p-3 text-sm text-bad">{state.error}</p>}
           <button className="btn w-full !py-3" disabled={pending}>{pending ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}</button>

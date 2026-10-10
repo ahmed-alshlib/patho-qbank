@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { ArrowRight, History as HistoryIcon, Plus, Timer } from "lucide-react";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { listSessions, TZ } from "@/lib/sessions";
 import { EmptyState } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function History() {
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const list = await listSessions(user.id);
   const when = (d: Date) => d.toLocaleString("en", { timeZone: TZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   return (

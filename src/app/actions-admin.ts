@@ -1,5 +1,5 @@
 "use server";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { db, users, reportedQuestions, settings, subjects, subscriptions } from "@/db";
@@ -13,7 +13,7 @@ async function admin() {
   return u;
 }
 const str = (f: FormData, k: string) => String(f.get(k) ?? "");
-const done = () => revalidatePath("/admin");
+const done = () => revalidatePath("/admin", "layout");
 
 export async function approveSubscription(f: FormData) {
   await admin();
@@ -86,5 +86,12 @@ export async function setStudentPassword(f: FormData) {
   const pw = str(f, "password");
   if (pw.length < 8) return;
   await db.update(users).set({ passwordHash: await bcrypt.hash(pw, 10) }).where(eq(users.id, str(f, "userId")));
+  await db.execute(sql`delete from user_sessions where user_id = ${str(f, "userId")}`); // sign the student out everywhere
+  done();
+}
+
+export async function signOutDevices(f: FormData) {
+  await admin();
+  await db.execute(sql`delete from user_sessions where user_id = ${str(f, "userId")}`);
   done();
 }

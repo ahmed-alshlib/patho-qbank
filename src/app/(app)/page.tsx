@@ -3,16 +3,17 @@ import { listSessions } from "@/lib/sessions";
 import { getTopicInsights, studyNext } from "@/lib/insights";
 import { accessibleSubjectIds } from "@/lib/access";
 import { ArrowRight, Plus, CircleX, Clock, Flame, Star, StickyNote, Target, Zap } from "lucide-react";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { getChapterStats, getCounts, getOverview, pct } from "@/lib/stats";
 import { Bar, ProgressRing, Stat } from "@/components/ui";
 import ActivityChart from "@/components/ActivityChart";
+import { setDailyGoal } from "../actions-study";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const user = (await getUser())!;
-  const o = await getOverview(user.id);
+  const user = (await requireUser());
+  const o = await getOverview(user.id, user.dailyGoal);
   const counts = await getCounts(user.id);
   const chapters = await getChapterStats(user.id);
   const totalQ = chapters.reduce((s, c) => s + c.total, 0);
@@ -77,10 +78,34 @@ export default async function Dashboard() {
           ))}
         </section>
 
+        <section className="card flex flex-col gap-5 sm:flex-row sm:items-center" data-testid="daily-goal">
+          <ProgressRing value={Math.min(100, pct(o.answeredToday, o.goal))} size={96} stroke={9} label={`${Math.min(o.answeredToday, o.goal)}/${o.goal}`} sub="today" />
+          <div className="min-w-0 flex-1 space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">{o.answeredToday >= o.goal ? "Daily goal reached" : `${o.goal - o.answeredToday} more to reach today's goal`}</h2>
+              <p className="text-sm text-muted"><Flame className="-mt-0.5 mr-1 inline h-4 w-4 text-warn" />{o.streak > 0 ? `${o.streak}-day streak. Keep it going.` : "Reach your goal today to start a streak."}</p>
+            </div>
+            <div className="flex gap-1.5" aria-label="Last 7 days">
+              {o.week.map((d) => (
+                <div key={d.key} className="flex flex-col items-center gap-1" title={`${d.key}: ${d.count} answered`}>
+                  <span className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-bold ${d.met ? "bg-good text-white" : d.today ? "border border-brand text-brand" : "bg-raised text-muted"}`}>{d.met ? "✓" : d.count || ""}</span>
+                  <span className="text-[10px] text-muted">{d.label[0]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <form action={setDailyGoal} className="flex flex-wrap items-center gap-1.5 sm:max-w-[13rem] sm:justify-end">
+            <span className="w-full text-xs text-muted sm:text-right">Daily goal</span>
+            {[10, 20, 30, 50].map((g) => (
+              <button key={g} name="goal" value={g} data-active={o.goal === g} className="rounded-full border border-line px-3 py-1 text-xs font-medium text-muted transition hover:text-ink data-[active=true]:border-brand data-[active=true]:bg-brand/10 data-[active=true]:text-brand">{g}</button>
+            ))}
+          </form>
+        </section>
+
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Accuracy" value={o.accuracy ?? "–"} suffix={o.accuracy === null ? "" : "%"} sub={`${o.correct} correct`} icon={<Target className="h-4 w-4" />} tone="good" />
           <Stat label="Today" value={o.answeredToday} sub="questions answered" icon={<Zap className="h-4 w-4" />} tone="brand" />
-          <Stat label="Streak" value={o.streak} sub={o.streak === 1 ? "day in a row" : "days in a row"} icon={<Flame className="h-4 w-4" />} tone="warn" />
+          <Stat label="Goal streak" value={o.streak} sub={o.streak === 1 ? "day in a row" : "days in a row"} icon={<Flame className="h-4 w-4" />} tone="warn" />
           <Stat label="Avg time" value={o.avgTime} suffix="s" sub="per question" icon={<Clock className="h-4 w-4" />} tone="brand" />
         </section>
 

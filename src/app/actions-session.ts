@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { db, answerChoices, bookmarks, chapters, questions, testQuestions, tests, topics, userAnswers } from "@/db";
 import { getUser } from "@/lib/auth";
 import { latestForQuestions, type Reveal } from "@/lib/questions";
+import { peerStats } from "@/lib/peers";
 import { accessibleSubjectIds, assertQuestionAccess } from "@/lib/access";
 
 async function me() {
@@ -93,7 +94,8 @@ export async function answerInSession(testId: string, questionId: string, choice
 
   if (t.mode === "exam") return null;
   const [q] = await db.select({ explanation: questions.explanation }).from(questions).where(eq(questions.id, questionId)).limit(1);
-  return { choiceId, isCorrect: picked.isCorrect, correctChoiceId: correct.id, explanation: q.explanation };
+  const peers = (await peerStats([questionId])).get(questionId) ?? null;
+  return { choiceId, isCorrect: picked.isCorrect, correctChoiceId: correct.id, explanation: q.explanation, peers };
 }
 
 export async function finishSession(testId: string) {

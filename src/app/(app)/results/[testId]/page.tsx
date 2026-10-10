@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CheckCircle2, CircleHelp, Clock, RotateCcw, XCircle, Plus } from "lucide-react";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { getResults } from "@/lib/sessions";
 import { retryIncorrect } from "../../../actions-session";
 import { Bar, ProgressRing } from "@/components/ui";
@@ -16,7 +16,7 @@ function fmt(sec: number) {
 
 export default async function Results({ params }: { params: Promise<{ testId: string }> }) {
   const { testId } = await params;
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const r = await getResults(user.id, testId);
   if (!r) notFound();
   if (!r.test.finishedAt) redirect(`/session/${testId}`);

@@ -1,10 +1,11 @@
 "use server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, answerChoices, questions, userAnswers, bookmarks, notes, highlights, reportedQuestions } from "@/db";
+import { db, users, answerChoices, questions, userAnswers, bookmarks, notes, highlights, reportedQuestions } from "@/db";
 import { getUser } from "@/lib/auth";
 import type { Reveal } from "@/lib/questions";
 import { assertQuestionAccess } from "@/lib/access";
+import { peerStats } from "@/lib/peers";
 
 async function me() {
   const user = await getUser();
@@ -26,7 +27,8 @@ export async function submitAnswer(questionId: string, choiceId: string, timeSpe
     userId: user.id, questionId, choiceId, isCorrect: picked.isCorrect,
     timeSpentSec: Math.max(0, Math.min(3600, Math.round(timeSpentSec))),
   });
-  return { choiceId, isCorrect: picked.isCorrect, correctChoiceId: correct.id, explanation: q.explanation };
+  const peers = (await peerStats([questionId])).get(questionId) ?? null;
+  return { choiceId, isCorrect: picked.isCorrect, correctChoiceId: correct.id, explanation: q.explanation, peers };
 }
 
 export async function toggleBookmark(questionId: string): Promise<boolean> {
@@ -81,4 +83,12 @@ export async function removeFromReview(formData: FormData) {
     await db.delete(highlights).where(and(eq(highlights.userId, user.id), eq(highlights.questionId, questionId)));
   }
   revalidatePath("/bookmarks"); revalidatePath("/notes"); revalidatePath("/incorrect");
+}
+
+export async function setDailyGoal(formData: FormData) {
+  const user = await me();
+  const n = Math.floor(Number(formData.get("goal")));
+  if (![5, 10, 20, 30, 50, 100].includes(n)) return;
+  await db.update(users).set({ dailyGoal: n }).where(eq(users.id, user.id));
+  revalidatePath("/");
 }

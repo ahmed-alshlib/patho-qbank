@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   isAdmin: boolean("is_admin").notNull().default(false),
+  dailyGoal: integer("daily_goal").notNull().default(20),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
@@ -78,7 +79,7 @@ export const userAnswers = pgTable(
     testId: text("test_id"),
     answeredAt: timestamp("answered_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("ua_user_q").on(t.userId, t.questionId), index("ua_user_time").on(t.userId, t.answeredAt)]
+  (t) => [index("ua_user_q").on(t.userId, t.questionId), index("ua_user_time").on(t.userId, t.answeredAt), index("ua_question").on(t.questionId), index("ua_time").on(t.answeredAt)]
 );
 
 export const bookmarks = pgTable(
@@ -180,3 +181,11 @@ export const rateLimits = pgTable("rate_limits", {
   count: integer("count").notNull().default(0),
   windowStart: timestamp("window_start", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---------- Logged-in devices (students may use at most 2 at a time) ----------
+export const userSessions = pgTable("user_sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  device: text("device").notNull().default(""),
+  createdAt: createdAt(),
+}, (t) => [index("user_sessions_user_idx").on(t.userId)]);

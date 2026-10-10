@@ -42,7 +42,7 @@ export async function getChapterStats(userId: string): Promise<ChapterStat[]> {
 
 const dayKey = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD in the app's timezone
 
-export async function getOverview(userId: string) {
+export async function getOverview(userId: string, goal = 20) {
   const [lat] = rows<{ completed: number; correct: number }>(await db.execute(sql`
     select count(*)::int as completed, (count(*) filter (where is_correct))::int as correct from ${latestCte(userId)} la`));
   const [tot] = rows<{ attempts: number; avg: number }>(await db.execute(sql`
@@ -55,8 +55,14 @@ export async function getOverview(userId: string) {
   const day = (offset: number) => new Date(Date.now() - offset * 86400000);
   const today = dayKey(day(0));
 
-  let streak = 0, off = byDay.has(today) ? 0 : 1;
-  while (byDay.has(dayKey(day(off)))) { streak++; off++; }
+  // Streak = consecutive days on which the daily goal was reached. Today does not break it until the day is over.
+  const met = (k: string) => (byDay.get(k) ?? 0) >= goal;
+  let streak = 0, off = met(today) ? 0 : 1;
+  while (met(dayKey(day(off)))) { streak++; off++; }
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = day(6 - i), key = dayKey(d), count = byDay.get(key) ?? 0;
+    return { key, label: d.toLocaleDateString("en", { weekday: "short", timeZone: TZ }), count, met: count >= goal, today: key === today };
+  });
 
   const daily = Array.from({ length: 14 }, (_, i) => {
     const d = day(13 - i), key = dayKey(d);
@@ -66,7 +72,7 @@ export async function getOverview(userId: string) {
   return {
     daily, completed: lat.completed, correct: lat.correct, incorrect: lat.completed - lat.correct,
     accuracy: lat.completed ? Math.round((lat.correct / lat.completed) * 100) : null,
-    answeredToday: byDay.get(today) ?? 0, streak, totalAttempts: tot.attempts, avgTime: Math.round(tot.avg),
+    answeredToday: byDay.get(today) ?? 0, streak, goal, week, totalAttempts: tot.attempts, avgTime: Math.round(tot.avg),
   };
 }
 

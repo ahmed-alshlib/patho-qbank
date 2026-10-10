@@ -1,7 +1,7 @@
 import { Check, Clock, Lock, MessageCircle, Landmark, X } from "lucide-react";
 import { asc, desc, eq } from "drizzle-orm";
 import { db, subjects, subscriptions } from "@/db";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { TZ } from "@/lib/stats";
 import ConfirmButton from "@/components/ConfirmButton";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; need?: string }> }) {
   const sp = await searchParams;
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const [subs, mine, cfg] = await Promise.all([
     db.select().from(subjects).orderBy(asc(subjects.order)),
     db.select().from(subscriptions).where(eq(subscriptions.userId, user.id)).orderBy(desc(subscriptions.createdAt)),

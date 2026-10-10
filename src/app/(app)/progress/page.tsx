@@ -1,5 +1,5 @@
 import { CheckCircle2, Gauge, Hourglass, XCircle } from "lucide-react";
-import { getUser } from "@/lib/auth";
+import { getUser, requireUser } from "@/lib/auth";
 import { getChapterStats, getOverview, pct } from "@/lib/stats";
 import { Bar, ProgressRing, Stat } from "@/components/ui";
 import ActivityChart from "@/components/ActivityChart";
@@ -9,7 +9,7 @@ import { getTopicInsights, getWeeklyTrend, weakTopics } from "@/lib/insights";
 export const dynamic = "force-dynamic";
 
 export default async function Progress() {
-  const user = (await getUser())!;
+  const user = (await requireUser());
   const o = await getOverview(user.id);
   const chapters = await getChapterStats(user.id);
   const [insights, weeks] = await Promise.all([getTopicInsights(user.id), getWeeklyTrend(user.id)]);
