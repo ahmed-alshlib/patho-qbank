@@ -13,6 +13,7 @@ export async function middleware(req: NextRequest) {
       valid = true;
     } catch {}
   }
+  if (pathname.startsWith("/api/auth/")) return NextResponse.next();
   const isPublic = PUBLIC.includes(pathname);
   if (!valid && !isPublic) return NextResponse.redirect(new URL("/login", req.url));
   if (valid && isPublic) return NextResponse.redirect(new URL("/", req.url));
