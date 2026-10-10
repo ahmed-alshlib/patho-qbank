@@ -21,10 +21,10 @@ function Box({ state }: { state: "none" | "some" | "all" }) {
   );
 }
 
-export default function NewSessionForm({ tree, counts }: { tree: Tree; counts: Counts }) {
+export default function NewSessionForm({ tree, counts, initialTopics = [] }: { tree: Tree; counts: Counts; initialTopics?: string[] }) {
   const router = useRouter();
   const [mode, setMode] = useState<"study" | "exam" | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set(initialTopics));
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [pool, setPool] = useState<Pool>("all");
   const [diffs, setDiffs] = useState<Set<string>>(new Set(DIFFS));

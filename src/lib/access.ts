@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { db, subjects, subscriptions, users, questions, topics, chapters } from "@/db";
 
 /** Subjects the student may study right now (active, unexpired subscription). Admins see everything. */
@@ -21,3 +21,25 @@ export async function assertQuestionAccess(userId: string, questionId: string) {
 }
 
 export function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; }
+
+export type Notice = { subjectId: string; subject: string; kind: "ending" | "ended"; days: number };
+
+/** Subjects ending within 7 days (or ended within the last 14) that the student has not already asked to renew. */
+export async function getExpiryNotices(userId: string): Promise<Notice[]> {
+  const rows = await db.select({ subjectId: subscriptions.subjectId, subject: subjects.name, status: subscriptions.status, expiresAt: subscriptions.expiresAt })
+    .from(subscriptions).innerJoin(subjects, eq(subscriptions.subjectId, subjects.id))
+    .where(eq(subscriptions.userId, userId)).orderBy(desc(subscriptions.createdAt));
+  const now = Date.now(), DAY = 86400000, out: Notice[] = [];
+  const ids = new Set(rows.map((r) => r.subjectId));
+  for (const id of ids) {
+    const mine = rows.filter((r) => r.subjectId === id);
+    if (mine.some((r) => r.status === "pending")) continue;
+    const act = mine.filter((r) => r.status === "active" && r.expiresAt);
+    if (!act.length) continue;
+    const exp = Math.max(...act.map((r) => r.expiresAt!.getTime()));
+    const days = Math.ceil((exp - now) / DAY);
+    if (exp > now && days <= 7) out.push({ subjectId: id, subject: mine[0].subject, kind: "ending", days });
+    else if (exp <= now && now - exp <= 14 * DAY) out.push({ subjectId: id, subject: mine[0].subject, kind: "ended", days: 0 });
+  }
+  return out;
+}

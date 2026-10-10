@@ -1,7 +1,8 @@
 "use server";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, reportedQuestions, settings, subjects, subscriptions } from "@/db";
+import bcrypt from "bcryptjs";
+import { db, users, reportedQuestions, settings, subjects, subscriptions } from "@/db";
 import { getUser } from "@/lib/auth";
 import { addMonths } from "@/lib/access";
 import { SETTING_KEYS } from "@/lib/settings";
@@ -17,8 +18,13 @@ const done = () => revalidatePath("/admin");
 export async function approveSubscription(f: FormData) {
   await admin();
   const now = new Date();
-  await db.update(subscriptions).set({ status: "active", approvedAt: now, expiresAt: addMonths(now, 3) })
-    .where(and(eq(subscriptions.id, str(f, "id")), eq(subscriptions.status, "pending")));
+  const [req] = await db.select().from(subscriptions).where(and(eq(subscriptions.id, str(f, "id")), eq(subscriptions.status, "pending"))).limit(1);
+  if (!req) return;
+  // Renewals extend from the current end date so students never lose days by renewing early.
+  const running = await db.select({ e: subscriptions.expiresAt }).from(subscriptions)
+    .where(and(eq(subscriptions.userId, req.userId), eq(subscriptions.subjectId, req.subjectId), eq(subscriptions.status, "active")));
+  const base = new Date(Math.max(now.getTime(), ...running.map((r) => r.e?.getTime() ?? 0)));
+  await db.update(subscriptions).set({ status: "active", approvedAt: now, expiresAt: addMonths(base, 3) }).where(eq(subscriptions.id, req.id));
   done();
 }
 
@@ -71,4 +77,12 @@ export async function saveSettings(f: FormData) {
     await db.update(subjects).set({ price: n }).where(eq(subjects.id, s.id));
   }
   revalidatePath("/plans"); done();
+}
+
+export async function setStudentPassword(f: FormData) {
+  await admin();
+  const pw = str(f, "password");
+  if (pw.length < 8) return;
+  await db.update(users).set({ passwordHash: await bcrypt.hash(pw, 10) }).where(eq(users.id, str(f, "userId")));
+  done();
 }

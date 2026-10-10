@@ -26,7 +26,8 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
     const last = mine.find((m) => m.subjectId === id);
     return { kind: last?.status === "active" ? ("expired" as const) : last?.status === "rejected" ? ("rejected" as const) : ("none" as const), s: last };
   };
-  const pendings = subs.map((s) => ({ s, st: stateOf(s.id) })).filter((x) => x.st.kind === "pending");
+  const pend = (id: string) => mine.find((m) => m.subjectId === id && m.status === "pending");
+  const pendings = subs.filter((s) => pend(s.id)).map((s) => ({ s, st: { s: pend(s.id)! } }));
   const wa = cfg.whatsapp.replace(/\D/g, "");
   const msg = (name: string, price: number, r: string) => encodeURIComponent(`Hello, I'm ${user.name} (${user.email}). I paid ${price} ${cfg.currency} for ${name}. Reference: ${r}`);
   const hasBank = cfg.bank_name || cfg.account_number;
@@ -56,7 +57,14 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
                 <div className="font-display text-3xl font-semibold">{s.price > 0 ? `${s.price} ${cfg.currency}` : "—"}</div>
                 <div className="text-xs text-muted">3 months of access</div>
               </div>
-              {kind === "active" && <p className="mt-auto text-sm text-muted">Active until <b className="text-ink">{fmt(sub!.expiresAt)}</b></p>}
+              {kind === "active" && (
+                <div className="mt-auto space-y-2">
+                  <p className="text-sm text-muted">Active until <b className="text-ink">{fmt(sub!.expiresAt)}</b></p>
+                  {pend(s.id) ? <p className="text-xs text-warn">Renewal pending · ref <b className="tracking-widest">{pend(s.id)!.reference}</b></p> : sub!.expiresAt!.getTime() - now <= 14 * 86400000 && (
+                    <form action={requestSubscription}><input type="hidden" name="subjectId" value={s.id} /><button className="btn w-full" disabled={s.price <= 0}>Renew for 3 more months</button></form>
+                  )}
+                </div>
+              )}
               {kind === "pending" && (
                 <form action={cancelRequest} className="mt-auto"><input type="hidden" name="id" value={sub!.id} />
                   <p className="mb-2 text-sm text-muted">Reference <b className="tracking-widest text-ink">{sub!.reference}</b>. Waiting for payment approval.</p>

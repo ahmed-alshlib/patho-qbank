@@ -1,0 +1,90 @@
+"use server";
+import { and, asc, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { db, subjects, chapters, topics, questions, answerChoices } from "@/db";
+import { getUser } from "@/lib/auth";
+import { checkQuestion, importChapters, LABELS, type ImportChapter } from "@/lib/import";
+
+async function admin() {
+  const u = await getUser();
+  if (!u?.isAdmin) throw new Error("Not allowed");
+}
+const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+const num = (f: FormData, k: string) => Math.max(0, Math.min(9999, Math.floor(Number(f.get(k))) || 0));
+const name = (f: FormData, k = "name") => { const v = str(f, k).slice(0, 160); if (!v) throw new Error("Name is required."); return v; };
+const done = () => { revalidatePath("/admin/content", "layout"); revalidatePath("/subjects"); };
+
+export async function saveSubject(f: FormData) {
+  await admin();
+  const id = str(f, "id");
+  if (id) await db.update(subjects).set({ name: name(f), order: num(f, "order") }).where(eq(subjects.id, id));
+  else await db.insert(subjects).values({ name: name(f), order: num(f, "order") });
+  done();
+}
+export async function deleteSubject(f: FormData) { await admin(); await db.delete(subjects).where(eq(subjects.id, str(f, "id"))); done(); }
+
+export async function saveChapter(f: FormData) {
+  await admin();
+  const id = str(f, "id");
+  if (id) await db.update(chapters).set({ name: name(f), description: str(f, "description").slice(0, 500), order: num(f, "order") }).where(eq(chapters.id, id));
+  else await db.insert(chapters).values({ subjectId: str(f, "subjectId"), name: name(f), description: str(f, "description").slice(0, 500), order: num(f, "order") });
+  done();
+}
+export async function deleteChapter(f: FormData) { await admin(); await db.delete(chapters).where(eq(chapters.id, str(f, "id"))); done(); }
+
+export async function saveTopic(f: FormData) {
+  await admin();
+  const id = str(f, "id");
+  if (id) await db.update(topics).set({ name: name(f), order: num(f, "order") }).where(eq(topics.id, id));
+  else await db.insert(topics).values({ chapterId: str(f, "chapterId"), name: name(f), order: num(f, "order") });
+  done();
+}
+export async function deleteTopic(f: FormData) { await admin(); await db.delete(topics).where(eq(topics.id, str(f, "id"))); done(); }
+
+/** Create or edit one question from the form. Answer choices are rewritten (labels A-F in order, blanks skipped). */
+export async function saveQuestion(f: FormData) {
+  await admin();
+  const id = str(f, "id"), topicId = str(f, "topicId");
+  const raw = LABELS.map((l) => ({ l, t: str(f, `choice_${l}`) })).filter((c) => c.t);
+  const correctLabel = str(f, "correct");
+  const ci = raw.findIndex((c) => c.l === correctLabel);
+  const q = { text: str(f, "text"), choices: raw.map((c) => c.t), correct: ci >= 0 ? LABELS[ci] : "", explanation: str(f, "explanation"), difficulty: str(f, "difficulty") || "medium" };
+  const err = checkQuestion(q);
+  if (err) redirect(`/admin/content/${topicId}?error=${encodeURIComponent(err)}`);
+  if (id) {
+    await db.update(questions).set({ questionText: q.text, explanation: q.explanation, difficulty: q.difficulty, tags: str(f, "tags") }).where(eq(questions.id, id));
+    await db.delete(answerChoices).where(eq(answerChoices.questionId, id));
+    await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: id, label: LABELS[i], text, isCorrect: LABELS[i] === q.correct })));
+  } else {
+    const last = await db.select({ o: questions.order }).from(questions).where(eq(questions.topicId, topicId)).orderBy(asc(questions.order));
+    const [qr] = await db.insert(questions).values({ topicId, questionText: q.text, explanation: q.explanation, difficulty: q.difficulty, tags: str(f, "tags"), order: last.length ? last[last.length - 1].o + 1 : 0 }).returning();
+    await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: qr.id, label: LABELS[i], text, isCorrect: LABELS[i] === q.correct })));
+  }
+  done();
+  redirect(`/admin/content/${topicId}?saved=1`);
+}
+
+export async function deleteQuestion(f: FormData) {
+  await admin();
+  await db.delete(questions).where(and(eq(questions.id, str(f, "id"))));
+  done();
+  redirect(`/admin/content/${str(f, "topicId")}`);
+}
+
+export async function importJson(f: FormData) {
+  await admin();
+  let text = str(f, "json");
+  const file = f.get("file");
+  if (file instanceof File && file.size) text = await file.text();
+  try {
+    const data = JSON.parse(text);
+    const r = await importChapters(Array.isArray(data) ? (data as ImportChapter[]) : [data as ImportChapter]);
+    done();
+    redirect(`/admin/content?imported=${r.added}&skipped=${r.skipped}`);
+  } catch (e) {
+    if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
+    const m = e instanceof SyntaxError ? "That is not valid JSON." : e instanceof Error ? e.message : "Import failed.";
+    redirect(`/admin/content?importError=${encodeURIComponent(m.slice(0, 200))}`);
+  }
+}

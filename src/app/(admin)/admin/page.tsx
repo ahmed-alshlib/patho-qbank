@@ -5,9 +5,11 @@ import { Check, CircleCheck, Flag, Settings as Cog, ShieldCheck, Trash2, Users, 
 import { db, subjects, subscriptions, users, reportedQuestions, questions, topics, chapters } from "@/db";
 import { getUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { mailProvider } from "@/lib/mail";
 import { TZ } from "@/lib/stats";
-import { approveSubscription, rejectSubscription, revokeSubscription, grantSubscription, resolveReport, deleteReport, saveSettings } from "../../actions-admin";
+import { approveSubscription, rejectSubscription, revokeSubscription, grantSubscription, resolveReport, deleteReport, saveSettings, setStudentPassword } from "../../actions-admin";
 import { EmptyState } from "@/components/ui";
+import AdminTabs from "../AdminTabs";
 
 export const dynamic = "force-dynamic";
 const rows = <T,>(r: unknown) => Array.from(r as ArrayLike<T>);
@@ -21,24 +23,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
   const [pendingN] = rows<{ n: number }>(await db.execute(sql`select count(*)::int n from subscriptions where status='pending'`));
   const [reportN] = rows<{ n: number }>(await db.execute(sql`select count(*)::int n from reported_questions where resolved_at is null`));
-  const tabs = [
-    { id: "requests", label: "Requests", icon: Wallet, n: pendingN.n },
-    { id: "students", label: "Students", icon: Users, n: 0 },
-    { id: "reports", label: "Reports", icon: Flag, n: reportN.n },
-    { id: "settings", label: "Settings", icon: Cog, n: 0 },
-  ];
-
   return (
     <div className="space-y-6">
       <div><p className="eyebrow">Admin</p><h1 className="mt-1 flex items-center gap-3 text-4xl font-semibold"><ShieldCheck className="h-8 w-8 text-brand" />Control panel</h1></div>
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <Link key={t.id} href={`/admin?tab=${t.id}`} data-active={tab === t.id}
-            className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-muted transition data-[active=true]:border-brand data-[active=true]:bg-brand/10 data-[active=true]:text-brand">
-            <t.icon className="h-4 w-4" />{t.label}{t.n > 0 && <span className="rounded-full bg-bad px-1.5 text-[11px] font-bold text-white">{t.n}</span>}
-          </Link>
-        ))}
-      </div>
+      <AdminTabs active={tab} counts={{ requests: pendingN.n, reports: reportN.n }} />
 
       {tab === "requests" && await Requests({ all: !!all })}
       {tab === "students" && await Students({ q })}
@@ -115,6 +103,12 @@ async function Students({ q }: { q: string }) {
             ))}
             {!subsAll.some((s) => s.userId === u.id) && <span className="text-xs text-muted">No active subjects</span>}
           </div>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted hover:text-ink">Set new password</summary>
+            <form action={setStudentPassword} className="mt-2 flex gap-2"><input type="hidden" name="userId" value={u.id} />
+              <input name="password" type="text" minLength={8} required placeholder="New password (8+ characters)" className="input !w-64 !py-1.5" autoComplete="off" />
+              <button className="btn-ghost !py-1.5 text-xs">Save</button></form>
+          </details>
         </div>
       ))}
       {list.length === 0 && <div className="card text-sm text-muted">No students found.</div>}
@@ -165,6 +159,10 @@ async function SettingsTab() {
           {field("bank_name", "Bank name")}{field("account_name", "Account holder name")}{field("account_number", "Account number / IBAN")}
           {field("whatsapp", "WhatsApp number (with country code)", "218912345678")}{field("currency", "Currency", "LYD")}{field("payment_note", "Extra note shown to students")}
         </div></section>
+      <section className="card space-y-1 text-sm"><h2 className="text-xl font-semibold">Email sending</h2>
+        {mailProvider() === "none"
+          ? <p className="text-warn">Not configured. Email verification and password reset are OFF (new accounts are verified automatically). Add SMTP_URL or RESEND_API_KEY in Vercel to turn them on.</p>
+          : <p className="text-good">Configured ({mailProvider()}). New accounts must verify their email, and password reset works.</p>}</section>
       <button className="btn">Save settings</button>
     </form>
   );

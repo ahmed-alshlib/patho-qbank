@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listSessions } from "@/lib/sessions";
+import { getTopicInsights, studyNext } from "@/lib/insights";
 import { accessibleSubjectIds } from "@/lib/access";
 import { ArrowRight, Plus, CircleX, Clock, Flame, Star, StickyNote, Target, Zap } from "lucide-react";
 import { getUser } from "@/lib/auth";
@@ -19,6 +20,7 @@ export default async function Dashboard() {
   const weak = chapters.filter((c) => c.completed >= 1 && c.accuracy !== null).sort((a, b) => a.accuracy! - b.accuracy!).slice(0, 3);
   const next = recent.find((c) => c.completed < c.total) ?? chapters.find((c) => c.completed < c.total) ?? chapters[0];
   const open = (await listSessions(user.id, 5)).filter((x) => !x.finishedAt);
+  const next2 = studyNext(await getTopicInsights(user.id));
   const hasAccess = (await accessibleSubjectIds(user.id)).size > 0;
   const donePct = pct(o.completed, totalQ);
 
@@ -59,6 +61,13 @@ export default async function Dashboard() {
             <div className="flex-1"><div className="font-semibold">Create a session</div><div className="text-xs text-muted">Study or exam mode, pick chapters, topics and count</div></div>
             <ArrowRight className="h-4 w-4 text-muted transition group-hover:translate-x-1 group-hover:text-brand" />
           </Link>
+          {next2 && (
+            <Link href={`/session/new?topics=${next2.topic.topicId}`} className="card card-hover group flex items-center gap-4 !p-4" data-testid="study-next">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand/10 text-brand"><Target className="h-5 w-5" /></span>
+              <div className="min-w-0 flex-1"><div className="eyebrow">Study next</div><div className="truncate font-semibold">{next2.topic.topic}</div><div className="truncate text-xs text-muted">{next2.reason}</div></div>
+              <ArrowRight className="h-4 w-4 text-muted transition group-hover:translate-x-1 group-hover:text-brand" />
+            </Link>
+          )}
           {open.map((x) => (
             <Link key={x.id} href={`/session/${x.id}`} className="card card-hover group flex items-center gap-4 !p-4">
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-warn/10 text-warn"><Clock className="h-5 w-5" /></span>

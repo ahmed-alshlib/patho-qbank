@@ -16,9 +16,11 @@ export async function requestSubscription(formData: FormData) {
   const subjectId = String(formData.get("subjectId"));
   const [sub] = await db.select().from(subjects).where(eq(subjects.id, subjectId)).limit(1);
   if (!sub) redirect("/plans");
-  const [existing] = await db.select({ id: subscriptions.id }).from(subscriptions)
-    .where(and(eq(subscriptions.userId, user.id), eq(subscriptions.subjectId, subjectId), inArray(subscriptions.status, ["pending", "active"]))).limit(1);
-  if (!existing) await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "pending", reference: ref(), price: sub.price });
+  const mine = await db.select().from(subscriptions)
+    .where(and(eq(subscriptions.userId, user.id), eq(subscriptions.subjectId, subjectId), inArray(subscriptions.status, ["pending", "active"])));
+  // A running subscription can only be renewed in its last 14 days; pending requests are never duplicated.
+  const blocked = mine.some((m) => m.status === "pending" || (m.expiresAt && m.expiresAt.getTime() - Date.now() > 14 * 86400000));
+  if (!blocked) await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "pending", reference: ref(), price: sub.price });
   redirect("/plans");
 }
 

@@ -26,6 +26,9 @@ npm run dev          # http://localhost:3000
 3. Environment Variables: add `DATABASE_URL` and `SESSION_SECRET` (same values as `.env`). `DIRECT_URL` is not needed on Vercel.
 4. Deploy.
 
+## Email setup (verification + password reset)
+Add `SMTP_URL` (and `MAIL_FROM`) or `RESEND_API_KEY` in Vercel. See `.env.example`. Admin, Settings shows whether email is active.
+
 ## Access and subscriptions
 Anyone can create an account. Each subject is a separate package (price set in Admin, Settings). A student requests a subject, pays by bank transfer, sends the receipt on WhatsApp with their reference code, and an admin approves it in Admin, Requests. Access lasts 3 months from approval. Admins (users.is_admin = true) see everything and can grant or revoke subjects.
 
@@ -38,7 +41,7 @@ Warning: re-loading a chapter deletes students' answers for that chapter, so fin
 - Phase 2: bookmarks, text highlights, personal notes, incorrect-questions list with retry, report a question, search and subject filter, keyboard shortcuts, light/dark theme.
 - Phase 3: Create session (study or exam mode, pick chapters/topics, question pool, difficulty, count, optional timer), results page with per-chapter/topic breakdown, history, retry incorrect. Highlights on the question text are temporary (not saved, cleared when answered); explanation highlights are saved.
 - Admin: requests approval, students, reports, prices and bank details. Subscriptions per subject.
-- Next: Phase 4 (topic analytics, weak-area recommendations).
+- Security: login/register/code rate limiting, email verification (6-digit code), password reset by email.
+- Admin: content manager (subjects, chapters, topics, questions, JSON import), renewals, expiry banner.
+- Phase 4: weak topics, weekly accuracy, "Study next" suggestion.
 
-## Still to add before launch
-Password reset, login rate limiting.

@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CreditCard, LogOut, Microscope, Plus } from "lucide-react";
+import { Clock, CreditCard, LogOut, Microscope, Plus } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getCounts } from "@/lib/stats";
+import { getExpiryNotices } from "@/lib/access";
 import { logout } from "../actions-auth";
 import NavLinks from "@/components/NavLinks";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -20,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getUser();
   if (!user) redirect("/login");
   if (user.isAdmin) redirect("/admin");
-  const counts = await getCounts(user.id);
+  const [counts, notices] = await Promise.all([getCounts(user.id), getExpiryNotices(user.id)]);
   const badges = { "/incorrect": counts.incorrect };
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
@@ -47,7 +48,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="flex gap-2"><Link href="/plans" aria-label="Subscriptions" className="btn-ghost !p-2.5"><CreditCard className="h-4 w-4" /></Link><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
       </header>
 
-      <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">{children}</div></main>
+      <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">
+        {notices.map((n) => (
+          <Link key={n.subjectId} href="/plans" data-testid="expiry-banner" className={`card mb-4 flex items-center gap-3 !p-4 text-sm ${n.kind === "ended" ? "!border-bad/40" : "!border-warn/40"}`}>
+            <Clock className={`h-4 w-4 shrink-0 ${n.kind === "ended" ? "text-bad" : "text-warn"}`} />
+            <span className="flex-1"><b>{n.subject}</b> {n.kind === "ended" ? "access has ended." : n.days <= 1 ? "ends today or tomorrow." : `ends in ${n.days} days.`}</span>
+            <span className="font-semibold text-brand">Renew</span>
+          </Link>
+        ))}
+        {children}</div></main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-[rgb(var(--glass)/.82)] backdrop-blur-xl lg:hidden"><NavLinks variant="bottom" badges={badges} /></nav>
     </div>
