@@ -4,7 +4,9 @@ import { db, subjects, chapters, topics, questions, answerChoices } from "@/db";
 export type ImportQ = { text: string; choices: string[]; correct: string; explanation: string; difficulty?: string; tags?: string };
 export type ImportChapter = {
   subject: string; subjectOrder?: number; chapter: string; chapterOrder?: number; description?: string;
-  topics: { name: string; questions: ImportQ[] }[];
+  topics?: { name: string; questions: ImportQ[] }[];
+  /** Shortcut for chapters without topics: questions go into one topic named like the chapter. */
+  questions?: ImportQ[];
 };
 export const LABELS = ["A", "B", "C", "D", "E", "F"];
 
@@ -21,9 +23,15 @@ export function checkQuestion(q: ImportQ): string | null {
 }
 
 /** Adds content without deleting anything: matching subject/chapter/topic are reused and questions already present (same text) are skipped, so student progress is kept. */
-export async function importChapters(list: ImportChapter[]): Promise<{ added: number; skipped: number }> {
+export async function importChapters(input: ImportChapter[]): Promise<{ added: number; skipped: number }> {
+  const list = input.map((c) => {
+    if (!Array.isArray(c.topics) && Array.isArray(c.questions) && c.chapter?.trim()) {
+      return { ...c, topics: [{ name: c.chapter.trim(), questions: c.questions }] };
+    }
+    return c;
+  });
   for (const c of list) {
-    if (!c.subject?.trim() || !c.chapter?.trim() || !Array.isArray(c.topics)) throw new Error("Each item needs subject, chapter and topics.");
+    if (!c.subject?.trim() || !c.chapter?.trim() || !Array.isArray(c.topics)) throw new Error("Each item needs subject, chapter and either topics or questions.");
     for (const t of c.topics) {
       if (!t.name?.trim() || !Array.isArray(t.questions)) throw new Error(`Topic "${t.name ?? ""}" is invalid.`);
       for (const q of t.questions) { const e = checkQuestion(q); if (e) throw new Error(e); }
@@ -35,7 +43,7 @@ export async function importChapters(list: ImportChapter[]): Promise<{ added: nu
     if (!subj) [subj] = await db.insert(subjects).values({ name: c.subject.trim(), order: c.subjectOrder ?? 0 }).returning();
     let [ch] = await db.select().from(chapters).where(and(eq(chapters.name, c.chapter.trim()), eq(chapters.subjectId, subj.id))).limit(1);
     if (!ch) [ch] = await db.insert(chapters).values({ subjectId: subj.id, name: c.chapter.trim(), description: c.description ?? "", order: c.chapterOrder ?? 0 }).returning();
-    for (const [ti, t] of c.topics.entries()) {
+    for (const [ti, t] of c.topics!.entries()) {
       let [tp] = await db.select().from(topics).where(and(eq(topics.name, t.name.trim()), eq(topics.chapterId, ch.id))).limit(1);
       if (!tp) [tp] = await db.insert(topics).values({ chapterId: ch.id, name: t.name.trim(), order: ti }).returning();
       const have = await db.select({ text: questions.questionText, order: questions.order }).from(questions).where(eq(questions.topicId, tp.id)).orderBy(asc(questions.order));
