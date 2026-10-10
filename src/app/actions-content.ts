@@ -79,7 +79,7 @@ export async function importJson(f: FormData) {
   if (file instanceof File && file.size) text = await file.text();
   try {
     const data = JSON.parse(text);
-    const r = await importChapters(Array.isArray(data) ? (data as ImportChapter[]) : [data as ImportChapter]);
+    const r = await importChapters(Array.isArray(data) ? (data as ImportChapter[]) : [data as ImportChapter], { subject: str(f, "subject").trim() || undefined, chapter: str(f, "chapter").trim() || undefined, topic: str(f, "topic").trim() || undefined });
     done();
     redirect(`/admin/content?imported=${r.added}&skipped=${r.skipped}`);
   } catch (e) {

@@ -7,6 +7,8 @@ import { getUser } from "@/lib/auth";
 import AdminTabs from "../../AdminTabs";
 import ConfirmButton from "@/components/ConfirmButton";
 import Collapsible from "@/components/Collapsible";
+import Popover from "@/components/Popover";
+import ImportForm from "@/components/ImportForm";
 import { saveSubject, deleteSubject, saveChapter, deleteChapter, saveTopic, deleteTopic, importJson } from "../../../actions-content";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +31,7 @@ const small = "input !py-1.5 text-sm";
 
 function Edit({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <details className="group/edit relative">
-      <summary aria-label={label} title={label} className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-lg text-muted transition hover:bg-raised hover:text-ink [&::-webkit-details-marker]:hidden"><Pencil className="h-3.5 w-3.5" /></summary>
-      <div className="absolute right-0 z-20 mt-1 w-[min(22rem,85vw)] space-y-3 glass-float !rounded-2xl p-4 text-left">{children}</div>
-    </details>
+    <Popover label={label} triggerClass="grid h-8 w-8 place-items-center rounded-lg text-muted transition hover:bg-raised hover:text-ink" trigger={<Pencil className="h-3.5 w-3.5" />}>{children}</Popover>
   );
 }
 
@@ -67,18 +66,15 @@ export default async function Content({ searchParams }: { searchParams: Promise<
       <div className="flex flex-wrap items-center gap-2">
         <form className="relative min-w-52 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input name="q" defaultValue={sp.q} placeholder="Search subjects, chapters, topics" className="input !pl-9" aria-label="Search content" /></form>
-        <details className="relative"><summary className="btn cursor-pointer list-none [&::-webkit-details-marker]:hidden"><Plus className="h-4 w-4" />New subject</summary>
-          <form action={saveSubject} className="absolute right-0 z-20 mt-2 w-[min(22rem,90vw)] space-y-3 glass-float p-4">
+        <Popover label="New subject" triggerClass="btn" trigger={<><Plus className="h-4 w-4" />New subject</>}>
+          <form action={saveSubject} className="space-y-3">
             <input className={small} name="name" placeholder="Subject name, e.g. Anatomy" required />
             <input className={small} name="order" type="number" min={0} placeholder="Order (0, 1, 2…)" />
-            <button className="btn w-full !py-2">Add subject</button><p className="text-xs text-muted">Set its price in Settings after adding.</p></form></details>
-        <details className="relative"><summary className="btn-ghost cursor-pointer list-none [&::-webkit-details-marker]:hidden"><Upload className="h-4 w-4" />Import JSON</summary>
-          <form action={importJson} className="absolute right-0 z-20 mt-2 w-[min(32rem,92vw)] space-y-3 glass-float p-4">
-            <p className="text-sm text-muted">Adds to the matching subject, chapter and topic (created if missing). Existing questions are skipped and nothing is deleted.</p>
-            <textarea name="json" rows={8} className="input font-mono text-xs" placeholder="Paste JSON here" />
-            <div className="flex flex-wrap items-center gap-3"><input type="file" name="file" accept=".json,application/json" className="text-sm" /><button className="btn !py-2">Import</button></div>
-            <details className="text-sm"><summary className="cursor-pointer font-medium text-brand">Show the format</summary><pre className="mt-2 max-h-56 overflow-auto rounded-xl bg-raised p-3 text-xs">{sample}</pre></details>
-          </form></details>
+            <button className="btn w-full !py-2">Add subject</button><p className="text-xs text-muted">Set its price, free option and duration in Settings after adding.</p></form>
+        </Popover>
+        <Popover label="Import JSON" width={560} triggerClass="btn-ghost" trigger={<><Upload className="h-4 w-4" />Import JSON</>}>
+          <ImportForm sample={sample} tree={subs.map((s) => ({ name: s.name, chapters: chs.filter((c) => c.subjectId === s.id).map((c) => ({ name: c.name, topics: topicsOf(c.id).map((t) => t.name) })) }))} />
+        </Popover>
       </div>
 
       {subs.length === 0 && <div className="card text-sm text-muted">No subjects yet. Use "New subject" to start.</div>}
@@ -91,7 +87,7 @@ export default async function Content({ searchParams }: { searchParams: Promise<
           const sTopics = sc.reduce((a, c) => a + topicsOf(c.id).length, 0), sQ = sc.reduce((a, c) => a + countQ(c.id), 0);
           return (
             <Collapsible key={s.id} defaultOpen={!!q} className="card !p-0" testId="subject-block" title={s.name}
-              meta={`${sc.length} chapters · ${sTopics} topics · ${sQ} questions${s.price ? ` · ${s.price} LYD` : " · no price yet"}`}
+              meta={`${sc.length} chapters · ${sTopics} topics · ${sQ} questions${s.isFree ? ` · Free · ${s.durationMonths} mo` : s.price ? ` · ${s.price} LYD · ${s.durationMonths} mo` : " · no price yet"}`}
               action={(
                   <Edit label="Edit subject">
                     <form action={saveSubject} className="space-y-2"><input type="hidden" name="id" value={s.id} />

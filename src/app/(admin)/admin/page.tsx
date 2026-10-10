@@ -9,6 +9,7 @@ import { mailProvider } from "@/lib/mail";
 import { TZ } from "@/lib/stats";
 import { approveSubscription, rejectSubscription, revokeSubscription, grantSubscription, resolveReport, deleteReport, saveSettings, setStudentPassword } from "../../actions-admin";
 import { EmptyState } from "@/components/ui";
+import ConfirmButton from "@/components/ConfirmButton";
 import AdminTabs from "../AdminTabs";
 
 export const dynamic = "force-dynamic";
@@ -59,11 +60,11 @@ async function Requests({ all }: { all: boolean }) {
           </div>
           {r.status === "pending" && (
             <div className="flex gap-2">
-              <form action={approveSubscription}><input type="hidden" name="id" value={r.id} /><button className="btn !py-2"><Check className="h-4 w-4" />Approve</button></form>
-              <form action={rejectSubscription}><input type="hidden" name="id" value={r.id} /><button className="btn-ghost !py-2"><X className="h-4 w-4" />Decline</button></form>
+              <form action={approveSubscription}><input type="hidden" name="id" value={r.id} /><ConfirmButton tone="brand" title="Approve this request?" confirmLabel="Approve" message={`Confirm that you received the payment from ${r.name} for ${r.subject}. Their access starts now.`} className="btn !py-2"><Check className="h-4 w-4" />Approve</ConfirmButton></form>
+              <form action={rejectSubscription}><input type="hidden" name="id" value={r.id} /><ConfirmButton title="Decline this request?" confirmLabel="Decline" message={`Decline ${r.name}'s request for ${r.subject}? They will see it as declined and can request again.`} className="btn-ghost !py-2"><X className="h-4 w-4" />Decline</ConfirmButton></form>
             </div>
           )}
-          {r.status === "active" && <form action={revokeSubscription}><input type="hidden" name="id" value={r.id} /><button className="btn-ghost !py-2 text-xs">Revoke</button></form>}
+          {r.status === "active" && <form action={revokeSubscription}><input type="hidden" name="id" value={r.id} /><ConfirmButton title="Revoke access?" confirmLabel="Revoke" message={`${r.name} will lose access to ${r.subject} immediately.`} className="btn-ghost !py-2 text-xs">Revoke</ConfirmButton></form>}
         </div>
       ))}
     </section>
@@ -93,13 +94,13 @@ async function Students({ q }: { q: string }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div><div className="font-semibold">{u.name}</div><div className="text-xs text-muted">{u.email} · joined {day(u.created_at)} · {u.answers} answers{u.last ? ` · last active ${when(u.last)}` : ""}</div></div>
             <form action={grantSubscription} className="flex gap-2"><input type="hidden" name="userId" value={u.id} />
-              <select name="subjectId" className="input !w-40 !py-1.5">{subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-              <button className="btn-ghost !py-1.5 text-xs">Grant 3 months</button></form>
+              <select name="subjectId" className="input !w-40 !py-1.5">{subs.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.durationMonths} mo)</option>)}</select>
+              <ConfirmButton tone="brand" title="Give access?" confirmLabel="Grant access" message={`Give ${u.name} access to the selected subject for its full duration, without payment?`} className="btn-ghost !py-1.5 text-xs">Grant access</ConfirmButton></form>
           </div>
           <div className="flex flex-wrap gap-2">
             {subsAll.filter((s) => s.userId === u.id).map((s) => (
               <form key={s.id} action={revokeSubscription} className="chip !bg-good/15 !text-good"><input type="hidden" name="id" value={s.id} />
-                {s.subject} until {day(s.expiresAt)}<button className="ml-1 rounded-full p-0.5 hover:bg-good/20" aria-label={`Revoke ${s.subject}`}><X className="h-3 w-3" /></button></form>
+                {s.subject} until {day(s.expiresAt)}<ConfirmButton title="Revoke access?" confirmLabel="Revoke" message={`${u.name} will lose access to ${s.subject} immediately.`} className="ml-1 rounded-full p-0.5 hover:bg-good/20"><X className="h-3 w-3" aria-label={`Revoke ${s.subject}`} /></ConfirmButton></form>
             ))}
             {!subsAll.some((s) => s.userId === u.id) && <span className="text-xs text-muted">No active subjects</span>}
           </div>
@@ -134,7 +135,7 @@ async function Reports({ all }: { all: boolean }) {
           <p className="rounded-xl bg-raised p-3 text-sm"><b>Reason:</b> {r.reason}</p>
           <div className="flex gap-2">
             {!r.resolved && <form action={resolveReport}><input type="hidden" name="id" value={r.id} /><button className="btn !py-1.5 text-xs"><Check className="h-3.5 w-3.5" />Mark resolved</button></form>}
-            <form action={deleteReport}><input type="hidden" name="id" value={r.id} /><button className="btn-ghost !py-1.5 text-xs"><Trash2 className="h-3.5 w-3.5" />Delete</button></form>
+            <form action={deleteReport}><input type="hidden" name="id" value={r.id} /><ConfirmButton title="Delete this report?" confirmLabel="Delete" message="The report will be removed permanently." className="btn-ghost !py-1.5 text-xs"><Trash2 className="h-3.5 w-3.5" />Delete</ConfirmButton></form>
           </div>
         </div>
       ))}
@@ -149,11 +150,17 @@ async function SettingsTab() {
   );
   return (
     <form action={saveSettings} className="space-y-6">
-      <section className="card space-y-4"><h2 className="text-xl font-semibold">Subject prices</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{subs.map((s) => (
-          <label key={s.id} className="block space-y-1"><span className="text-xs font-medium text-muted">{s.name} ({cfg.currency})</span>
-            <input type="number" min={0} name={`price_${s.id}`} defaultValue={s.price} className="input" /></label>))}</div>
-        <p className="text-xs text-muted">A subject with price 0 cannot be subscribed to yet.</p></section>
+      <section className="card space-y-4"><h2 className="text-xl font-semibold">Subjects: price, duration and free access</h2>
+        <div className="space-y-3">{subs.map((s) => (
+          <div key={s.id} className="grid items-end gap-3 rounded-2xl border border-line p-3 sm:grid-cols-[1fr_8rem_8rem_auto]" data-testid="subject-setting">
+            <div className="font-medium">{s.name}</div>
+            <label className="block space-y-1"><span className="text-xs font-medium text-muted">Price ({cfg.currency})</span>
+              <input type="number" min={0} name={`price_${s.id}`} defaultValue={s.price} className="input !py-2" /></label>
+            <label className="block space-y-1"><span className="text-xs font-medium text-muted">Access (months)</span>
+              <input type="number" min={1} max={36} name={`months_${s.id}`} defaultValue={s.durationMonths} className="input !py-2" /></label>
+            <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm"><input type="checkbox" name={`free_${s.id}`} defaultChecked={s.isFree} className="h-4 w-4 accent-[rgb(var(--brand))]" />Free</label>
+          </div>))}</div>
+        <p className="text-xs text-muted">Free subjects: students tap "Enroll for free" and get access instantly for the chosen months, with no approval. Paid subjects need a price above 0.</p></section>
       <section className="card space-y-4"><h2 className="text-xl font-semibold">Payment details</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {field("bank_name", "Bank name")}{field("account_name", "Account holder name")}{field("account_number", "Account number / IBAN")}

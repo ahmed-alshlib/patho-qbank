@@ -24,7 +24,8 @@ export async function approveSubscription(f: FormData) {
   const running = await db.select({ e: subscriptions.expiresAt }).from(subscriptions)
     .where(and(eq(subscriptions.userId, req.userId), eq(subscriptions.subjectId, req.subjectId), eq(subscriptions.status, "active")));
   const base = new Date(Math.max(now.getTime(), ...running.map((r) => r.e?.getTime() ?? 0)));
-  await db.update(subscriptions).set({ status: "active", approvedAt: now, expiresAt: addMonths(base, 3) }).where(eq(subscriptions.id, req.id));
+  const [subj] = await db.select({ m: subjects.durationMonths }).from(subjects).where(eq(subjects.id, req.subjectId)).limit(1);
+  await db.update(subscriptions).set({ status: "active", approvedAt: now, expiresAt: addMonths(base, subj?.m ?? 3) }).where(eq(subscriptions.id, req.id));
   done();
 }
 
@@ -40,7 +41,7 @@ export async function revokeSubscription(f: FormData) {
   done();
 }
 
-/** Give a student a subject directly (cash payment, scholarship, renewal...). Starts today, lasts 3 months. */
+/** Give a student a subject directly (cash payment, scholarship, renewal...). Starts today, lasts the subject's duration. */
 export async function grantSubscription(f: FormData) {
   await admin();
   const userId = str(f, "userId"), subjectId = str(f, "subjectId");
@@ -49,7 +50,7 @@ export async function grantSubscription(f: FormData) {
   if (!sub) return;
   await db.update(subscriptions).set({ status: "revoked" }).where(and(eq(subscriptions.userId, userId), eq(subscriptions.subjectId, subjectId), inArray(subscriptions.status, ["active", "pending"])));
   const now = new Date();
-  await db.insert(subscriptions).values({ userId, subjectId, status: "active", reference: "ADMIN", price: 0, approvedAt: now, expiresAt: addMonths(now, 3) });
+  await db.insert(subscriptions).values({ userId, subjectId, status: "active", reference: "ADMIN", price: 0, approvedAt: now, expiresAt: addMonths(now, sub.durationMonths) });
   done();
 }
 
@@ -74,7 +75,8 @@ export async function saveSettings(f: FormData) {
   const all = await db.select({ id: subjects.id }).from(subjects);
   for (const s of all) {
     const n = Math.max(0, Math.min(100000, Math.floor(Number(f.get(`price_${s.id}`)) || 0)));
-    await db.update(subjects).set({ price: n }).where(eq(subjects.id, s.id));
+    const months = Math.max(1, Math.min(36, Math.floor(Number(f.get(`months_${s.id}`)) || 3)));
+    await db.update(subjects).set({ price: n, durationMonths: months, isFree: f.get(`free_${s.id}`) === "on" }).where(eq(subjects.id, s.id));
   }
   revalidatePath("/plans"); done();
 }

@@ -4,7 +4,8 @@ import { db, subjects, subscriptions } from "@/db";
 import { getUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { TZ } from "@/lib/stats";
-import { requestSubscription, cancelRequest } from "../../actions-plans";
+import ConfirmButton from "@/components/ConfirmButton";
+import { requestSubscription, cancelRequest, enrollFree } from "../../actions-plans";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
       <div>
         <p className="eyebrow">{sp.welcome ? "Welcome to Medical QBank" : "Subscriptions"}</p>
         <h1 className="mt-1 text-4xl font-semibold">Choose your subjects</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted">Each subject is a separate package. Access lasts 3 months from the day your payment is approved.</p>
+        <p className="mt-2 max-w-2xl text-sm text-muted">Each subject is a separate package. Paid subjects unlock when your payment is approved; free subjects unlock instantly. Access lasts for the number of months shown on each card.</p>
       </div>
 
       {sp.need && <div className="card !border-warn/40 flex items-center gap-3 text-sm"><Lock className="h-4 w-4 text-warn" />Subscribe to that subject to open its questions.</div>}
@@ -54,26 +55,26 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
                 {(kind === "none" || kind === "expired" || kind === "rejected") && <span className="chip"><Lock className="h-3 w-3" />{kind === "expired" ? "Expired" : kind === "rejected" ? "Declined" : "Locked"}</span>}
               </div>
               <div>
-                <div className="font-display text-3xl font-semibold">{s.price > 0 ? `${s.price} ${cfg.currency}` : "—"}</div>
-                <div className="text-xs text-muted">3 months of access</div>
+                <div className="font-display text-3xl font-semibold">{s.isFree ? "Free" : s.price > 0 ? `${s.price} ${cfg.currency}` : "—"}</div>
+                <div className="text-xs text-muted">{s.durationMonths} {s.durationMonths === 1 ? "month" : "months"} of access</div>
               </div>
               {kind === "active" && (
                 <div className="mt-auto space-y-2">
                   <p className="text-sm text-muted">Active until <b className="text-ink">{fmt(sub!.expiresAt)}</b></p>
                   {pend(s.id) ? <p className="text-xs text-warn">Renewal pending · ref <b className="tracking-widest">{pend(s.id)!.reference}</b></p> : sub!.expiresAt!.getTime() - now <= 14 * 86400000 && (
-                    <form action={requestSubscription}><input type="hidden" name="subjectId" value={s.id} /><button className="btn w-full" disabled={s.price <= 0}>Renew for 3 more months</button></form>
+                    <form action={s.isFree ? enrollFree : requestSubscription}><input type="hidden" name="subjectId" value={s.id} /><button className="btn w-full" disabled={!s.isFree && s.price <= 0}>Renew for {s.durationMonths} more {s.durationMonths === 1 ? "month" : "months"}</button></form>
                   )}
                 </div>
               )}
               {kind === "pending" && (
                 <form action={cancelRequest} className="mt-auto"><input type="hidden" name="id" value={sub!.id} />
                   <p className="mb-2 text-sm text-muted">Reference <b className="tracking-widest text-ink">{sub!.reference}</b>. Waiting for payment approval.</p>
-                  <button className="btn-ghost w-full !py-2 text-xs"><X className="h-3.5 w-3.5" />Cancel request</button></form>
+                  <ConfirmButton title="Cancel this request?" confirmLabel="Cancel request" message="Your pending request will be removed. You can request again any time." className="btn-ghost w-full !py-2 text-xs"><X className="h-3.5 w-3.5" />Cancel request</ConfirmButton></form>
               )}
               {(kind === "none" || kind === "expired" || kind === "rejected") && (
-                <form action={requestSubscription} className="mt-auto"><input type="hidden" name="subjectId" value={s.id} />
-                  <button className="btn w-full" disabled={s.price <= 0}>{kind === "expired" ? "Renew" : "Subscribe"}</button>
-                  {s.price <= 0 && <p className="mt-2 text-center text-xs text-muted">Price not set yet.</p>}</form>
+                <form action={s.isFree ? enrollFree : requestSubscription} className="mt-auto"><input type="hidden" name="subjectId" value={s.id} />
+                  <button className="btn w-full" disabled={!s.isFree && s.price <= 0}>{s.isFree ? (kind === "expired" ? "Enroll again (free)" : "Enroll for free") : kind === "expired" ? "Renew" : "Subscribe"}</button>
+                  {!s.isFree && s.price <= 0 && <p className="mt-2 text-center text-xs text-muted">Price not set yet.</p>}</form>
               )}
             </div>
           );
@@ -103,7 +104,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
                   {!wa && <span className="text-warn">WhatsApp number has not been added yet.</span>}
                 </div></div></li>
             <li className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand/15 text-xs font-bold text-brand">3</span>
-              <div>We confirm the payment and unlock the subject. Access starts on the approval date and lasts 3 months.</div></li>
+              <div>We confirm the payment and unlock the subject. Access starts on the approval date and lasts for the months shown on the subject card.</div></li>
           </ol>
         </section>
       )}

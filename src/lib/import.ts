@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices } from "@/db";
 
 export type ImportQ = { text: string; choices: string[]; correct: string; explanation: string; difficulty?: string; tags?: string };
@@ -23,12 +23,15 @@ export function checkQuestion(q: ImportQ): string | null {
 }
 
 /** Adds content without deleting anything: matching subject/chapter/topic are reused and questions already present (same text) are skipped, so student progress is kept. */
-export async function importChapters(input: ImportChapter[]): Promise<{ added: number; skipped: number }> {
-  const list = input.map((c) => {
-    if (!Array.isArray(c.topics) && Array.isArray(c.questions) && c.chapter?.trim()) {
-      return { ...c, topics: [{ name: c.chapter.trim(), questions: c.questions }] };
-    }
-    return c;
+export async function importChapters(input: ImportChapter[], opts: { subject?: string; chapter?: string; topic?: string } = {}): Promise<{ added: number; skipped: number }> {
+  const list = input.map((c0) => {
+    const c: ImportChapter = { ...c0 };
+    if (opts.subject) c.subject = opts.subject;
+    if (opts.chapter) c.chapter = opts.chapter;
+    let tps = c.topics;
+    if (!Array.isArray(tps) && Array.isArray(c.questions) && c.chapter?.trim()) tps = [{ name: c.chapter.trim(), questions: c.questions }];
+    if (opts.topic && Array.isArray(tps)) tps = [{ name: opts.topic, questions: tps.flatMap((t) => (Array.isArray(t.questions) ? t.questions : [])) }];
+    return { ...c, topics: tps };
   });
   for (const c of list) {
     if (!c.subject?.trim() || !c.chapter?.trim() || !Array.isArray(c.topics)) throw new Error("Each item needs subject, chapter and either topics or questions.");
@@ -39,12 +42,12 @@ export async function importChapters(input: ImportChapter[]): Promise<{ added: n
   }
   let added = 0, skipped = 0;
   for (const c of list) {
-    let [subj] = await db.select().from(subjects).where(eq(subjects.name, c.subject.trim())).limit(1);
+    let [subj] = await db.select().from(subjects).where(sql`lower(${subjects.name}) = ${c.subject.trim().toLowerCase()}`).limit(1);
     if (!subj) [subj] = await db.insert(subjects).values({ name: c.subject.trim(), order: c.subjectOrder ?? 0 }).returning();
-    let [ch] = await db.select().from(chapters).where(and(eq(chapters.name, c.chapter.trim()), eq(chapters.subjectId, subj.id))).limit(1);
+    let [ch] = await db.select().from(chapters).where(and(sql`lower(${chapters.name}) = ${c.chapter.trim().toLowerCase()}`, eq(chapters.subjectId, subj.id))).limit(1);
     if (!ch) [ch] = await db.insert(chapters).values({ subjectId: subj.id, name: c.chapter.trim(), description: c.description ?? "", order: c.chapterOrder ?? 0 }).returning();
     for (const [ti, t] of c.topics!.entries()) {
-      let [tp] = await db.select().from(topics).where(and(eq(topics.name, t.name.trim()), eq(topics.chapterId, ch.id))).limit(1);
+      let [tp] = await db.select().from(topics).where(and(sql`lower(${topics.name}) = ${t.name.trim().toLowerCase()}`, eq(topics.chapterId, ch.id))).limit(1);
       if (!tp) [tp] = await db.insert(topics).values({ chapterId: ch.id, name: t.name.trim(), order: ti }).returning();
       const have = await db.select({ text: questions.questionText, order: questions.order }).from(questions).where(eq(questions.topicId, tp.id)).orderBy(asc(questions.order));
       const seen = new Set(have.map((h) => h.text.trim()));

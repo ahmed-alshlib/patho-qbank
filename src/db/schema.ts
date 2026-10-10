@@ -27,6 +27,8 @@ export const subjects = pgTable("subjects", {
   id: id(),
   name: text("name").notNull(),
   price: integer("price").notNull().default(0),
+  isFree: boolean("is_free").notNull().default(false),
+  durationMonths: integer("duration_months").notNull().default(3),
   order: integer("order").notNull().default(0),
 });
 
