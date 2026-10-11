@@ -1,4 +1,4 @@
-# Medical QBank
+# Rakeez
 
 Student-only pathology question bank. Next.js 15 + TypeScript + Postgres (Supabase) + Drizzle + Tailwind. Deploys on Vercel.
 
