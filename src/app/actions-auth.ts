@@ -23,7 +23,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const email = norm(form.get("email"));
   const password = String(form.get("password") ?? "");
   const ip = await clientIp();
-  if (!(await rateLimit(`login:ip:${ip}`, 30, 900)) || !(await rateLimit(`login:email:${email}`, 8, 900))) return { error: TOO_MANY, email };
+  if (!(await rateLimit(`login:ip:${ip}`, 400, 900)) || !(await rateLimit(`login:email:${email}`, 8, 900))) return { error: TOO_MANY, email };
 
   const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) return { error: "Incorrect email or password.", email };
@@ -47,7 +47,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
   if (name.length < 2) return { error: "Please enter your name.", name, email };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "Please enter a valid email.", name, email };
   if (password.length < 8) return { error: "Password must be at least 8 characters.", name, email };
-  if (!(await rateLimit(`reg:ip:${await clientIp()}`, 10, 3600))) return { error: TOO_MANY, name, email };
+  if (!(await rateLimit(`reg:ip:${await clientIp()}`, 400, 3600))) return { error: TOO_MANY, name, email };
 
   const [dupe] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (dupe?.emailVerifiedAt) return { error: "An account with this email already exists. Please log in.", name, email };
@@ -65,7 +65,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
 
 export async function verifyEmail(_: FormState, form: FormData): Promise<FormState> {
   const email = norm(form.get("email")), code = String(form.get("code") ?? "").replace(/\D/g, "");
-  if (!(await rateLimit(`verify:${email}`, 12, 900)) || !(await rateLimit(`verify:ip:${await clientIp()}`, 40, 900))) return { error: TOO_MANY, email };
+  if (!(await rateLimit(`verify:${email}`, 12, 900)) || !(await rateLimit(`verify:ip:${await clientIp()}`, 400, 900))) return { error: TOO_MANY, email };
   if (code.length !== 6) return { error: "Enter the 6-digit code.", email };
   if (!(await checkCode(email, "verify", code))) return { error: "That code is wrong or has expired. Request a new one.", email };
   const [user] = await db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.email, email)).returning();
@@ -87,7 +87,7 @@ export async function resendCode(_: FormState, form: FormData): Promise<FormStat
 export async function forgotPassword(_: FormState, form: FormData): Promise<FormState> {
   const email = norm(form.get("email"));
   if (mailProvider() === "none") return { error: "Password reset by email isn't set up yet. Please contact support.", email };
-  if (!(await rateLimit(`forgot:ip:${await clientIp()}`, 10, 3600))) return { error: TOO_MANY, email };
+  if (!(await rateLimit(`forgot:ip:${await clientIp()}`, 150, 3600))) return { error: TOO_MANY, email };
   const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (user) await sendCodeSafely(email, "reset");
   redirect(`/reset?email=${encodeURIComponent(email)}`); // same answer whether or not the account exists
@@ -95,7 +95,7 @@ export async function forgotPassword(_: FormState, form: FormData): Promise<Form
 
 export async function resetPassword(_: FormState, form: FormData): Promise<FormState> {
   const email = norm(form.get("email")), code = String(form.get("code") ?? "").replace(/\D/g, ""), password = String(form.get("password") ?? "");
-  if (!(await rateLimit(`reset:${email}`, 12, 900)) || !(await rateLimit(`reset:ip:${await clientIp()}`, 40, 900))) return { error: TOO_MANY, email };
+  if (!(await rateLimit(`reset:${email}`, 12, 900)) || !(await rateLimit(`reset:ip:${await clientIp()}`, 300, 900))) return { error: TOO_MANY, email };
   if (password.length < 8) return { error: "Password must be at least 8 characters.", email };
   if (code.length !== 6 || !(await checkCode(email, "reset", code))) return { error: "That code is wrong or has expired. Request a new one.", email };
   const passwordHash = await bcrypt.hash(password, 10);

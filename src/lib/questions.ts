@@ -2,12 +2,13 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices, bookmarks, notes, highlights, userAnswers } from "@/db";
 import { latestCte } from "@/lib/stats";
 import { accessibleSubjectIds } from "@/lib/access";
+import { parseTags } from "@/lib/tags";
 import { peerStats, type Peer } from "@/lib/peers";
 
 export type Reveal = { choiceId: string; isCorrect: boolean; correctChoiceId: string; explanation: string; peers?: Peer | null };
 export type Hl = { id: string; target: "question" | "explanation"; start: number; end: number };
 export type StudyQuestion = {
-  id: string; subject: string; chapter: string; topic: string; text: string; difficulty: string;
+  id: string; subject: string; chapter: string; topic: string; text: string; tags: string[];
   choices: { id: string; label: string; text: string }[];
   previous: Reveal | null;
   /** Exam sessions: the choice picked so far (no correctness is ever sent). */
@@ -58,7 +59,7 @@ export async function loadStudyQuestions(userId: string, opts: { chapterId?: str
     const cs = choices.filter((c) => c.questionId === r.q.id);
     const prev = latest.get(r.q.id);
     return {
-      id: r.q.id, subject: r.subject, chapter: r.chapter, topic: r.topic, text: r.q.questionText, difficulty: r.q.difficulty,
+      id: r.q.id, subject: r.subject, chapter: r.chapter, topic: r.topic, text: r.q.questionText, tags: parseTags(r.q.tags),
       choices: cs.map((c) => ({ id: c.id, label: c.label, text: c.text })),
       // Correct answers/explanations are only sent for questions the student has already answered (never in exams).
       previous: prev && !opts.exam ? { choiceId: prev.choiceId!, isCorrect: prev.isCorrect, correctChoiceId: cs.find((c) => c.isCorrect)!.id, explanation: r.q.explanation, peers: peers.get(r.q.id) ?? null } : null,
@@ -88,7 +89,7 @@ export async function reviewIds(userId: string, kind: ReviewKind): Promise<strin
 }
 
 export type ReviewItem = {
-  id: string; text: string; subjectId: string; subject: string; chapter: string; topic: string; difficulty: string;
+  id: string; text: string; subjectId: string; subject: string; chapter: string; topic: string; tags: string[];
   note: string; highlightCount: number; bookmarked: boolean;
 };
 
@@ -112,7 +113,7 @@ export async function getReviewItems(userId: string, kind: ReviewKind, filter: {
   const items = rows
     .filter((r) => allowed.has(r.subjectId))
     .map((r): ReviewItem => ({
-      id: r.q.id, text: r.q.questionText, subjectId: r.subjectId, subject: r.subject, chapter: r.chapter, topic: r.topic, difficulty: r.q.difficulty,
+      id: r.q.id, text: r.q.questionText, subjectId: r.subjectId, subject: r.subject, chapter: r.chapter, topic: r.topic, tags: parseTags(r.q.tags),
       note: nts.find((n) => n.questionId === r.q.id)?.body ?? "", highlightCount: hls.filter((h) => h.id === r.q.id).length, bookmarked: bmSet.has(r.q.id),
     }))
     .filter((i) => !filter.subjectId || i.subjectId === filter.subjectId)

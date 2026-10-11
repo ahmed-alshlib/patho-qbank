@@ -181,7 +181,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
           <div className="flex flex-wrap gap-1.5">
             <span className="chip">{q.subject} · {q.chapter}</span>
             <span className="chip">{q.topic}</span>
-            <span className={`chip capitalize ${q.difficulty === "hard" ? "!text-bad" : q.difficulty === "easy" ? "!text-good" : "!text-warn"}`}>{q.difficulty}</span>
+            {q.tags.map((t) => <span key={t} className="chip !border-brand/30 !bg-brand/10 !text-brand">{t}</span>)}
           </div>
           <div className="flex shrink-0 gap-1">
             <button onClick={onBookmark} aria-label="Bookmark" title="Bookmark" className={`btn-ghost !p-2 ${bookmarked[q.id] ? "!border-warn/50 !bg-warn/10" : ""}`}>

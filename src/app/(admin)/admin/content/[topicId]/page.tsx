@@ -11,7 +11,7 @@ import { saveQuestion, deleteQuestion } from "../../../../actions-content";
 
 export const dynamic = "force-dynamic";
 
-type Q = { id: string; text: string; explanation: string; difficulty: string; tags: string; choices: { label: string; text: string; isCorrect: boolean }[] };
+type Q = { id: string; text: string; explanation: string; tags: string; choices: { label: string; text: string; isCorrect: boolean }[] };
 
 function QuestionForm({ topicId, q }: { topicId: string; q?: Q }) {
   return (
@@ -32,8 +32,7 @@ function QuestionForm({ topicId, q }: { topicId: string; q?: Q }) {
       </div>
       <textarea name="explanation" rows={4} className="input" placeholder="Explanation" defaultValue={q?.explanation} required />
       <div className="flex flex-wrap items-center gap-2">
-        <select name="difficulty" defaultValue={q?.difficulty ?? "medium"} className="input !w-36 !py-1.5"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
-        <input name="tags" className="input !w-56 !py-1.5" placeholder="Tags (comma separated)" defaultValue={q?.tags} />
+        <input name="tags" className="input !w-72 !py-1.5" placeholder="Exam tags, e.g. Final 01/2026, Mid 03/2025" defaultValue={q?.tags} />
         <button className="btn !py-2">{q ? "Save changes" : <><Plus className="h-4 w-4" />Add question</>}</button>
       </div>
     </form>
@@ -50,7 +49,7 @@ export default async function TopicQuestions({ params, searchParams }: { params:
   if (!t) notFound();
   const qs = await db.select().from(questions).where(eq(questions.topicId, topicId)).orderBy(asc(questions.order));
   const ch = qs.length ? await db.select().from(answerChoices).where(inArray(answerChoices.questionId, qs.map((q) => q.id))).orderBy(asc(answerChoices.label)) : [];
-  const list: Q[] = qs.map((q) => ({ id: q.id, text: q.questionText, explanation: q.explanation, difficulty: q.difficulty, tags: q.tags,
+  const list: Q[] = qs.map((q) => ({ id: q.id, text: q.questionText, explanation: q.explanation, tags: q.tags,
     choices: ch.filter((c) => c.questionId === q.id).map((c) => ({ label: c.label, text: c.text, isCorrect: c.isCorrect })) }));
 
   return (
@@ -70,7 +69,7 @@ export default async function TopicQuestions({ params, searchParams }: { params:
       {list.map((q, i) => (
         <details key={q.id} className="card !p-0" data-testid="question-row">
           <summary className="flex cursor-pointer items-start gap-3 p-4">
-            <span className="chip shrink-0">#{i + 1}</span><span className="flex-1 text-sm">{q.text}</span><span className="chip shrink-0">{q.difficulty}</span>
+            <span className="chip shrink-0">#{i + 1}</span><span className="flex-1 text-sm">{q.text}</span><span className="flex shrink-0 flex-wrap justify-end gap-1">{q.tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => <span key={t} className="chip !border-brand/30 !bg-brand/10 !text-brand">{t}</span>)}</span>
           </summary>
           <div className="space-y-4 border-t border-line p-4">
             <QuestionForm topicId={topicId} q={q} />

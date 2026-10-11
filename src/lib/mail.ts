@@ -8,7 +8,7 @@ export function mailProvider(): MailProvider {
   return "none";
 }
 
-const FROM = () => process.env.MAIL_FROM ?? "Medical QBank <onboarding@resend.dev>";
+const FROM = () => process.env.MAIL_FROM ?? "Rakeez <onboarding@resend.dev>";
 
 export async function sendMail(to: string, subject: string, text: string) {
   const p = mailProvider();

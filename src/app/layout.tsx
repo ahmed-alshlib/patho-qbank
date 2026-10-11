@@ -2,7 +2,7 @@ import "@fontsource-variable/inter";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 
-export const metadata: Metadata = { title: "Medical QBank", description: "Question bank for medical students" };
+export const metadata: Metadata = { title: "Rakeez", description: "Rakeez – question bank for medical students" };
 export const viewport: Viewport = { themeColor: "#080B14" };
 
 // Runs before first paint so there is no light/dark flash.

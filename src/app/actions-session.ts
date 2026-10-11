@@ -6,6 +6,7 @@ import { getUser } from "@/lib/auth";
 import { latestForQuestions, type Reveal } from "@/lib/questions";
 import { peerStats } from "@/lib/peers";
 import { accessibleSubjectIds, assertQuestionAccess } from "@/lib/access";
+import { parseTags } from "@/lib/tags";
 
 async function me() {
   const user = await getUser();
@@ -18,7 +19,7 @@ export type SessionInput = {
   topicIds: string[];
   count: number;
   pool: "all" | "unanswered" | "incorrect" | "bookmarked" | "answered";
-  difficulties: string[];
+  tags: string[];
   randomize: boolean;
   timed: boolean;
   minutes: number;
@@ -44,17 +45,18 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
   const user = await me();
   if (!["study", "exam"].includes(input.mode)) return { error: "Choose study or exam mode." };
   if (!input.topicIds?.length) return { error: "Choose at least one topic." };
-  const diffs = (input.difficulties ?? []).filter((d) => ["easy", "medium", "hard"].includes(d));
-  if (!diffs.length) return { error: "Choose at least one difficulty." };
+  const wantTags = new Set((input.tags ?? []).map((t) => String(t).trim()).filter(Boolean).slice(0, 100));
   const count = Math.max(1, Math.min(MAX_QUESTIONS, Math.floor(input.count) || 0));
   const minutes = Math.max(1, Math.min(360, Math.floor(input.minutes) || 0));
 
   const allowed = [...(await accessibleSubjectIds(user.id))];
   if (!allowed.length) return { error: "Subscribe to a subject first to create a session." };
-  let cands = await db.select({ id: questions.id })
+  let cands = await db.select({ id: questions.id, tags: questions.tags })
     .from(questions).innerJoin(topics, eq(questions.topicId, topics.id)).innerJoin(chapters, eq(topics.chapterId, chapters.id))
-    .where(and(inArray(questions.topicId, input.topicIds.slice(0, 500)), inArray(questions.difficulty, diffs), inArray(chapters.subjectId, allowed)))
+    .where(and(inArray(questions.topicId, input.topicIds.slice(0, 500)), inArray(chapters.subjectId, allowed)))
     .orderBy(asc(chapters.order), asc(topics.order), asc(questions.order));
+  // Empty tag choice = no filter. "__none" matches questions that have no tag.
+  if (wantTags.size) cands = cands.filter((c) => { const t = parseTags(c.tags); return t.length ? t.some((x) => wantTags.has(x)) : wantTags.has("__none"); });
   let ids = cands.map((c) => c.id);
 
   if (input.pool !== "all" && ids.length) {
@@ -70,7 +72,7 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
 
   if (input.randomize) shuffle(ids);
   ids = ids.slice(0, count);
-  const id = await insertSession(user.id, input.mode, ids, { timed: input.timed, minutes, randomize: input.randomize, filters: { topicIds: input.topicIds, pool: input.pool, difficulties: diffs } });
+  const id = await insertSession(user.id, input.mode, ids, { timed: input.timed, minutes, randomize: input.randomize, filters: { topicIds: input.topicIds, pool: input.pool, tags: [...wantTags] } });
   return { id };
 }
 

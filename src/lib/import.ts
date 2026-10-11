@@ -1,7 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices } from "@/db";
 
-export type ImportQ = { text: string; choices: string[]; correct: string; explanation: string; difficulty?: string; tags?: string };
+export type ImportQ = { text: string; choices: string[]; correct: string; explanation: string; tags?: string | string[] };
 export type ImportChapter = {
   subject: string; subjectOrder?: number; chapter: string; chapterOrder?: number; description?: string;
   topics?: { name: string; questions: ImportQ[] }[];
@@ -18,7 +18,6 @@ export function checkQuestion(q: ImportQ): string | null {
   const i = LABELS.indexOf(String(q.correct).toUpperCase());
   if (i < 0 || i >= q.choices.length) return `"${q.text.slice(0, 40)}" has an invalid correct answer`;
   if (!q.explanation?.trim()) return `"${q.text.slice(0, 40)}" has no explanation`;
-  if (q.difficulty && !["easy", "medium", "hard"].includes(q.difficulty)) return `"${q.text.slice(0, 40)}" has an invalid difficulty`;
   return null;
 }
 
@@ -54,7 +53,7 @@ export async function importChapters(input: ImportChapter[], opts: { subject?: s
       let order = have.length ? have[have.length - 1].order + 1 : 0;
       for (const q of t.questions) {
         if (seen.has(q.text.trim())) { skipped++; continue; }
-        const [qr] = await db.insert(questions).values({ topicId: tp.id, questionText: q.text.trim(), explanation: q.explanation.trim(), difficulty: q.difficulty ?? "medium", tags: q.tags ?? "", order: order++ }).returning();
+        const [qr] = await db.insert(questions).values({ topicId: tp.id, questionText: q.text.trim(), explanation: q.explanation.trim(), tags: (Array.isArray(q.tags) ? q.tags.join(",") : q.tags ?? "").split(/[,،;]/).map((t) => t.trim()).filter(Boolean).join(", "), order: order++ }).returning();
         const correct = LABELS.indexOf(String(q.correct).toUpperCase());
         await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: qr.id, label: LABELS[i], text: String(text).trim(), isCorrect: i === correct })));
         seen.add(q.text.trim()); added++;

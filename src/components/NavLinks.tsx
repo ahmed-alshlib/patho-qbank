@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CreditCard, BarChart3, BookOpen, CircleX, History, LayoutDashboard, PlusCircle, Star, StickyNote } from "lucide-react";
+import { CreditCard, BarChart3, BookOpen, CircleX, FileText, History, LayoutDashboard, PlusCircle, Star, StickyNote } from "lucide-react";
 
 const ITEMS: { href: string; label: string; icon: typeof History; bottom?: boolean }[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, bottom: true },
   { href: "/subjects", label: "Subjects", icon: BookOpen, bottom: true },
   { href: "/session/new", label: "New session", icon: PlusCircle, bottom: true },
   { href: "/history", label: "History", icon: History, bottom: true },
+  { href: "/summaries", label: "Summaries", icon: FileText },
   { href: "/bookmarks", label: "Bookmarks", icon: Star },
   { href: "/incorrect", label: "Incorrect", icon: CircleX },
   { href: "/notes", label: "Notes & Highlights", icon: StickyNote },

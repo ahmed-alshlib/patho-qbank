@@ -41,6 +41,17 @@ export const chapters = pgTable("chapters", {
   order: integer("order").notNull().default(0),
 });
 
+// Written study notes for a chapter (simple formatted text). Students see them for subjects they can access.
+export const summaries = pgTable("summaries", {
+  id: id(),
+  chapterId: text("chapter_id").notNull().references(() => chapters.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  order: integer("order").notNull().default(0),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("summaries_chapter_idx").on(t.chapterId)]);
+
 export const topics = pgTable("topics", {
   id: id(),
   chapterId: text("chapter_id").notNull().references(() => chapters.id, { onDelete: "cascade" }),

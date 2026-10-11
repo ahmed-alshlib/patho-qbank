@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { BookOpenCheck, Check, ChevronDown, Clock, GraduationCap, Minus, Play, Shuffle, Timer } from "lucide-react";
 import { createSession } from "@/app/actions-session";
 import type { Counts, Tree } from "@/lib/sessions";
+import { parseTags, sortTags } from "@/lib/tags";
 
 type Pool = "all" | "unanswered" | "incorrect" | "bookmarked" | "answered";
 const POOLS: { id: Pool; label: string; idx: number }[] = [
   { id: "all", label: "All questions", idx: 0 }, { id: "unanswered", label: "Unanswered", idx: 1 }, { id: "incorrect", label: "Incorrect", idx: 2 },
   { id: "bookmarked", label: "Bookmarked", idx: 3 }, { id: "answered", label: "Already done", idx: 4 },
 ];
-const DIFFS = ["easy", "medium", "hard"] as const;
 const MAX = 200;
 
 function Box({ state }: { state: "none" | "some" | "all" }) {
@@ -27,7 +27,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
   const [selected, setSelected] = useState<Set<string>>(new Set(initialTopics));
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [pool, setPool] = useState<Pool>("all");
-  const [diffs, setDiffs] = useState<Set<string>>(new Set(DIFFS));
+  const [tagSel, setTagSel] = useState<Set<string>>(new Set()); // empty = every question
   const [count, setCount] = useState(20);
   const [randomize, setRandomize] = useState(true);
   const [timed, setTimed] = useState(false);
@@ -36,8 +36,14 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
   const [pending, start] = useTransition();
 
   const idx = POOLS.find((p) => p.id === pool)!.idx;
-  const topicAvail = (topicId: string) => [...diffs].reduce((s, d) => s + (counts[topicId]?.[d]?.[idx] ?? 0), 0);
-  const available = useMemo(() => [...selected].reduce((s, t) => s + topicAvail(t), 0), [selected, diffs, pool, counts]); // eslint-disable-line react-hooks/exhaustive-deps
+  const allTags = useMemo(() => {
+    const set = new Set<string>(); let none = false;
+    for (const byTags of Object.values(counts)) for (const k of Object.keys(byTags)) { const t = parseTags(k); if (t.length) t.forEach((x) => set.add(x)); else none = true; }
+    return { list: sortTags([...set]), none };
+  }, [counts]);
+  const matches = (key: string) => { if (!tagSel.size) return true; const t = parseTags(key); return t.length ? t.some((x) => tagSel.has(x)) : tagSel.has("__none"); };
+  const topicAvail = (topicId: string) => Object.entries(counts[topicId] ?? {}).reduce((s, [k, v]) => s + (matches(k) ? v[idx] ?? 0 : 0), 0);
+  const available = useMemo(() => [...selected].reduce((s, t) => s + topicAvail(t), 0), [selected, tagSel, pool, counts]); // eslint-disable-line react-hooks/exhaustive-deps
   const effective = Math.max(0, Math.min(count, available, MAX));
 
   const toggleTopics = (ids: string[], on: boolean) => setSelected((prev) => { const n = new Set(prev); ids.forEach((id) => (on ? n.add(id) : n.delete(id))); return n; });
@@ -48,7 +54,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
     if (!mode) return;
     setError("");
     start(async () => {
-      const res = await createSession({ mode, topicIds: [...selected], count: effective, pool, difficulties: [...diffs], randomize, timed, minutes });
+      const res = await createSession({ mode, topicIds: [...selected], count: effective, pool, tags: [...tagSel], randomize, timed, minutes });
       if (res.error) setError(res.error); else router.push(`/session/${res.id}`);
     });
   }
@@ -120,12 +126,17 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
                   {POOLS.map((p) => <button key={p.id} onClick={() => setPool(p.id)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${pool === p.id ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>{p.label}</button>)}
                 </div>
               </div>
-              <div>
-                <h2 className={sectionTitle}>Difficulty</h2>
-                <div className="flex flex-wrap gap-2">
-                  {DIFFS.map((d) => <button key={d} onClick={() => toggleSet(diffs, d, setDiffs)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium capitalize transition ${diffs.has(d) ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>{d}</button>)}
+              {(allTags.list.length > 0 || allTags.none) && (
+                <div>
+                  <h2 className={sectionTitle}>Exams and years</h2>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setTagSel(new Set())} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${tagSel.size === 0 ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>All</button>
+                    {allTags.list.map((t) => <button key={t} onClick={() => toggleSet(tagSel, t, setTagSel)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${tagSel.has(t) ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>{t}</button>)}
+                    {allTags.none && <button onClick={() => toggleSet(tagSel, "__none", setTagSel)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${tagSel.has("__none") ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>No tag</button>}
+                  </div>
+                  <p className="mt-2 text-xs text-muted">Pick one or more. Nothing picked means all questions.</p>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="card space-y-5">

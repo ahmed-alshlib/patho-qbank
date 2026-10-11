@@ -8,7 +8,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
       <section className="relative hidden overflow-hidden bg-gradient-to-br from-brand via-brand to-brand2 p-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-black/10 blur-3xl" />
-        <div className="relative flex items-center gap-2.5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/20 backdrop-blur"><Microscope className="h-5 w-5" /></span><span className="font-display text-2xl font-semibold">Medical QBank</span></div>
+        <div className="relative flex items-center gap-2.5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/20 backdrop-blur"><Microscope className="h-5 w-5" /></span><span className="font-display text-2xl font-semibold">Rakeez</span></div>
         <div className="relative max-w-md space-y-8">
           <h1 className="font-display text-5xl font-semibold leading-[1.05]">Master medicine, one question at a time.</h1>
           <ul className="space-y-4 text-white/90">

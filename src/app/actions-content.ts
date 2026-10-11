@@ -42,6 +42,8 @@ export async function saveTopic(f: FormData) {
 }
 export async function deleteTopic(f: FormData) { await admin(); await db.delete(topics).where(eq(topics.id, str(f, "id"))); done(); }
 
+const cleanTags = (s: string) => s.split(/[,،;]/).map((t) => t.trim()).filter(Boolean).join(", ");
+
 /** Create or edit one question from the form. Answer choices are rewritten (labels A-F in order, blanks skipped). */
 export async function saveQuestion(f: FormData) {
   await admin();
@@ -49,16 +51,16 @@ export async function saveQuestion(f: FormData) {
   const raw = LABELS.map((l) => ({ l, t: str(f, `choice_${l}`) })).filter((c) => c.t);
   const correctLabel = str(f, "correct");
   const ci = raw.findIndex((c) => c.l === correctLabel);
-  const q = { text: str(f, "text"), choices: raw.map((c) => c.t), correct: ci >= 0 ? LABELS[ci] : "", explanation: str(f, "explanation"), difficulty: str(f, "difficulty") || "medium" };
+  const q = { text: str(f, "text"), choices: raw.map((c) => c.t), correct: ci >= 0 ? LABELS[ci] : "", explanation: str(f, "explanation") };
   const err = checkQuestion(q);
   if (err) redirect(`/admin/content/${topicId}?error=${encodeURIComponent(err)}`);
   if (id) {
-    await db.update(questions).set({ questionText: q.text, explanation: q.explanation, difficulty: q.difficulty, tags: str(f, "tags") }).where(eq(questions.id, id));
+    await db.update(questions).set({ questionText: q.text, explanation: q.explanation, tags: cleanTags(str(f, "tags")) }).where(eq(questions.id, id));
     await db.delete(answerChoices).where(eq(answerChoices.questionId, id));
     await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: id, label: LABELS[i], text, isCorrect: LABELS[i] === q.correct })));
   } else {
     const last = await db.select({ o: questions.order }).from(questions).where(eq(questions.topicId, topicId)).orderBy(asc(questions.order));
-    const [qr] = await db.insert(questions).values({ topicId, questionText: q.text, explanation: q.explanation, difficulty: q.difficulty, tags: str(f, "tags"), order: last.length ? last[last.length - 1].o + 1 : 0 }).returning();
+    const [qr] = await db.insert(questions).values({ topicId, questionText: q.text, explanation: q.explanation, tags: cleanTags(str(f, "tags")), order: last.length ? last[last.length - 1].o + 1 : 0 }).returning();
     await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: qr.id, label: LABELS[i], text, isCorrect: LABELS[i] === q.correct })));
   }
   done();
@@ -78,13 +80,21 @@ export async function importJson(f: FormData) {
   const file = f.get("file");
   if (file instanceof File && file.size) text = await file.text();
   try {
-    const data = JSON.parse(text);
+    text = text.replace(/^\uFEFF/, "").trim();
+    if (!text) throw new Error("Nothing to import: paste the JSON or choose a file.");
+    let data: unknown;
+    try { data = JSON.parse(text); } catch (e) {
+      const m = /position (\d+)/.exec(e instanceof Error ? e.message : "");
+      const pos = m ? Number(m[1]) : -1;
+      const where = pos >= 0 ? ` Problem near line ${text.slice(0, pos).split("\n").length}: "${text.slice(Math.max(0, pos - 25), pos + 25).replace(/\s+/g, " ")}"` : "";
+      throw new Error(`That is not valid JSON.${where} The text starts with: "${text.slice(0, 20).replace(/\s+/g, " ")}"`);
+    }
     const r = await importChapters(Array.isArray(data) ? (data as ImportChapter[]) : [data as ImportChapter], { subject: str(f, "subject").trim() || undefined, chapter: str(f, "chapter").trim() || undefined, topic: str(f, "topic").trim() || undefined });
     done();
     redirect(`/admin/content?imported=${r.added}&skipped=${r.skipped}`);
   } catch (e) {
     if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
-    const m = e instanceof SyntaxError ? "That is not valid JSON." : e instanceof Error ? e.message : "Import failed.";
-    redirect(`/admin/content?importError=${encodeURIComponent(m.slice(0, 200))}`);
+    const m = e instanceof Error ? e.message : "Import failed.";
+    redirect(`/admin/content?importError=${encodeURIComponent(m.slice(0, 300))}`);
   }
 }

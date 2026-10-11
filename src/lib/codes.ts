@@ -16,7 +16,7 @@ export async function issueCode(email: string, purpose: Purpose): Promise<boolea
   const code = String(randomInt(100000, 1000000));
   await db.insert(emailCodes).values({ email, purpose, codeHash: hash(email, code), expiresAt: new Date(Date.now() + TTL_MIN * 60_000) });
   const what = purpose === "verify" ? "verify your email" : "reset your password";
-  await sendMail(email, `Your Medical QBank code: ${code}`, `Use this code to ${what}: ${code}\n\nIt expires in ${TTL_MIN} minutes. If you didn't ask for it, you can ignore this email.`);
+  await sendMail(email, `Your Rakeez code: ${code}`, `Use this code to ${what}: ${code}\n\nIt expires in ${TTL_MIN} minutes. If you didn't ask for it, you can ignore this email.`);
   return true;
 }
 

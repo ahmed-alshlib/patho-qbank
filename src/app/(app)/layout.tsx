@@ -12,7 +12,7 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white shadow-soft"><Microscope className="h-5 w-5" /></span>
-      <span className="font-display text-xl font-semibold tracking-tight">Medical QBank</span>
+      <span className="font-display text-xl font-semibold tracking-tight">Rakeez</span>
     </div>
   );
 }

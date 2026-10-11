@@ -21,8 +21,9 @@ const sample = `{
     { "name": "Necrosis and apoptosis", "questions": [
       { "text": "Question text?",
         "choices": ["Choice A", "Choice B", "Choice C", "Choice D", "Choice E"],
-        "correct": "C", "difficulty": "easy",
-        "explanation": "Why the answer is right." }
+        "correct": "C",
+        "explanation": "Why the answer is right.",
+        "tags": "Final 01/2026" }
     ]}
   ]
 }`;

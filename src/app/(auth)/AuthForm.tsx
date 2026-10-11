@@ -18,7 +18,7 @@ export default function AuthForm({ mode, google, gError, kicked }: { mode: "logi
     <AuthShell>
         <form action={action} className="animate-rise w-full max-w-sm space-y-5">
           <div className="space-y-2">
-            <div className="mb-6 flex items-center gap-2.5 lg:hidden"><span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white"><Microscope className="h-5 w-5" /></span><span className="font-display text-xl font-semibold">Medical QBank</span></div>
+            <div className="mb-6 flex items-center gap-2.5 lg:hidden"><span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white"><Microscope className="h-5 w-5" /></span><span className="font-display text-xl font-semibold">Rakeez</span></div>
             <h2 className="text-3xl font-semibold">{mode === "login" ? "Welcome back" : "Create your account"}</h2>
             <p className="text-sm text-muted">{mode === "login" ? "Log in to continue studying." : "Create your account, then choose the subjects you want."}</p>
           </div>

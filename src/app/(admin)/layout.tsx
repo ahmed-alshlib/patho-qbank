@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 lg:px-10">
           <div className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white"><ShieldCheck className="h-5 w-5" /></span>
-            <span className="font-display text-lg font-semibold tracking-tight">Medical QBank <span className="text-muted">Admin</span></span>
+            <span className="font-display text-lg font-semibold tracking-tight">Rakeez <span className="text-muted">Admin</span></span>
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden text-xs text-muted sm:inline">{user.email}</span>

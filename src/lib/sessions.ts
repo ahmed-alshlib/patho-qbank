@@ -1,3 +1,4 @@
+import { parseTags } from "@/lib/tags";
 import { peerStats } from "@/lib/peers";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, subjects, chapters, topics, questions, answerChoices, tests, testQuestions } from "@/db";
@@ -8,7 +9,7 @@ import { accessibleSubjectIds } from "@/lib/access";
 const rows = <T,>(r: unknown) => Array.from(r as ArrayLike<T>);
 
 export type Tree = { subjects: { id: string; name: string; chapters: { id: string; name: string; topics: { id: string; name: string }[] }[] }[] };
-/** counts[topicId][difficulty] = [total, unanswered, incorrect, bookmarked, answered] */
+/** counts[topicId][tags string] = [total, unanswered, incorrect, bookmarked, answered] */
 export type Counts = Record<string, Record<string, number[]>>;
 
 export async function getSessionTree(userId: string): Promise<{ tree: Tree; counts: Counts }> {
@@ -22,8 +23,8 @@ export async function getSessionTree(userId: string): Promise<{ tree: Tree; coun
       chapters: c.filter((ch) => ch.subjectId === sub.id).map((ch) => ({ id: ch.id, name: ch.name, topics: t.filter((tp) => tp.chapterId === ch.id).map((tp) => ({ id: tp.id, name: tp.name })) })),
     })),
   };
-  const r = rows<{ topic_id: string; difficulty: string; total: number; unanswered: number; incorrect: number; bookmarked: number; answered: number }>(await db.execute(sql`
-    select q.topic_id, q.difficulty, count(*)::int as total,
+  const r = rows<{ topic_id: string; tags: string; total: number; unanswered: number; incorrect: number; bookmarked: number; answered: number }>(await db.execute(sql`
+    select q.topic_id, q.tags, count(*)::int as total,
       (count(*) filter (where la.question_id is null))::int as unanswered,
       (count(*) filter (where la.is_correct = false))::int as incorrect,
       (count(*) filter (where b.id is not null))::int as bookmarked,
@@ -31,9 +32,9 @@ export async function getSessionTree(userId: string): Promise<{ tree: Tree; coun
     from questions q
     left join ${latestCte(userId)} la on la.question_id = q.id
     left join bookmarks b on b.question_id = q.id and b.user_id = ${userId}
-    group by q.topic_id, q.difficulty`));
+    group by q.topic_id, q.tags`));
   const counts: Counts = {};
-  for (const x of r) (counts[x.topic_id] ??= {})[x.difficulty] = [x.total, x.unanswered, x.incorrect, x.bookmarked, x.answered];
+  for (const x of r) (counts[x.topic_id] ??= {})[x.tags] = [x.total, x.unanswered, x.incorrect, x.bookmarked, x.answered];
   return { tree, counts };
 }
 
@@ -61,7 +62,7 @@ export async function listSessions(userId: string, limit = 100): Promise<Session
 }
 
 export type ResultItem = {
-  id: string; position: number; text: string; explanation: string; difficulty: string;
+  id: string; position: number; text: string; explanation: string; tags: string[];
   subjectId: string; subject: string; chapterId: string; chapter: string; topicId: string; topic: string;
   choices: { id: string; label: string; text: string; isCorrect: boolean }[];
   chosenId: string | null; status: "correct" | "incorrect" | "unanswered";
@@ -87,7 +88,7 @@ export async function getResults(userId: string, testId: string) {
   const items: ResultItem[] = r.map((x) => {
     const a = latest.get(x.q.id);
     return {
-      id: x.q.id, position: x.position, text: x.q.questionText, explanation: x.q.explanation, difficulty: x.q.difficulty,
+      id: x.q.id, position: x.position, text: x.q.questionText, explanation: x.q.explanation, tags: parseTags(x.q.tags),
       subjectId: x.subjectId, subject: x.subject, chapterId: x.chapterId, chapter: x.chapter, topicId: x.topicId, topic: x.topic,
       choices: choices.filter((c) => c.questionId === x.q.id).map((c) => ({ id: c.id, label: c.label, text: c.text, isCorrect: c.isCorrect })),
       chosenId: a?.choiceId ?? null, status: !a ? "unanswered" : a.isCorrect ? "correct" : "incorrect",

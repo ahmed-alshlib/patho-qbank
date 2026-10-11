@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   if (req.nextUrl.searchParams.get("error") || !code) return fail("cancelled");
   if (!state || state !== req.cookies.get("g_state")?.value) return fail("state");
 
-  if (!(await rateLimit(`google:${await clientIp()}`, 30, 900))) return fail("busy");
+  if (!(await rateLimit(`google:${await clientIp()}`, 500, 900))) return fail("busy");
 
   try {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
