@@ -38,7 +38,6 @@ export default async function AdminSummaries({ searchParams }: { searchParams: P
 
   return (
     <div className="space-y-6">
-      <div><p className="eyebrow">Admin</p><h1 className="mt-1 flex items-center gap-3 text-4xl font-semibold"><ShieldCheck className="h-8 w-8 text-brand" />Control panel</h1></div>
       <AdminTabs active="summaries" />
 
       {sp.error && <div className="card !border-bad/40 text-sm text-bad" role="alert">{sp.error}</div>}

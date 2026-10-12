@@ -193,6 +193,17 @@ export const rateLimits = pgTable("rate_limits", {
   windowStart: timestamp("window_start", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---------- Announcements shown to every student (exam dates, new chapters, downtime...) ----------
+export const announcements = pgTable("announcements", {
+  id: id(),
+  message: text("message").notNull(),
+  /** info | warning | urgent */
+  level: text("level").notNull().default("info"),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: createdAt(),
+});
+
 // ---------- Logged-in devices (students may use at most 2 at a time) ----------
 export const userSessions = pgTable("user_sessions", {
   id: text("id").primaryKey(),

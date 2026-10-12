@@ -18,6 +18,16 @@
   --glass: 23 30 48; --glass-a: .72; --float-a: .86;
 }
 
+/* Admin area: always light, frosted glass over the photo background. */
+.admin-light {
+  --bg: 244 246 251; --surface: 255 255 255; --raised: 236 239 250; --line: 208 215 235;
+  --ink: 22 28 52; --muted: 92 101 130;
+  --brand: 54 86 214; --brand2: 118 98 232;
+  --good: 22 163 74; --bad: 220 38 38; --warn: 202 138 4; --shadow: 40 50 110;
+  --glass: 255 255 255; --glass-a: .55; --float-a: .88;
+  color: rgb(var(--ink));
+}
+
 @layer base {
   html { color-scheme: light dark; }
   body { @apply bg-bg font-sans text-ink antialiased; font-feature-settings: "cv11", "ss03"; font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }

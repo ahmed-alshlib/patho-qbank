@@ -19,7 +19,6 @@ export default async function BackupPage() {
 
   return (
     <div className="space-y-6">
-      <div><p className="eyebrow">Admin</p><h1 className="mt-1 flex items-center gap-3 text-4xl font-semibold"><ShieldCheck className="h-8 w-8 text-brand" />Control panel</h1></div>
       <AdminTabs active="backup" />
 
       <section className="card space-y-4">

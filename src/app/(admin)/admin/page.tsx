@@ -29,7 +29,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const [reportN] = rows<{ n: number }>(await db.execute(sql`select count(*)::int n from reported_questions where resolved_at is null`));
   return (
     <div className="space-y-6">
-      <div><p className="eyebrow">Admin</p><h1 className="mt-1 flex items-center gap-3 text-4xl font-semibold"><ShieldCheck className="h-8 w-8 text-brand" />Control panel</h1></div>
       <AdminTabs active={tab} counts={{ requests: pendingN.n, reports: reportN.n }} />
 
       {tab === "requests" && await Requests({ all: !!all })}

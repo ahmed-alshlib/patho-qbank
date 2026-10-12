@@ -56,7 +56,6 @@ export default async function Content({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="space-y-6">
-      <div><p className="eyebrow">Admin</p><h1 className="mt-1 flex items-center gap-3 text-4xl font-semibold"><ShieldCheck className="h-8 w-8 text-brand" />Control panel</h1></div>
       <AdminTabs active="content" />
 
       {sp.imported && <div className="card !border-good/40 text-sm text-good">Imported {sp.imported} new question(s){Number(sp.skipped) ? `, skipped ${sp.skipped} that already existed` : ""}.</div>}

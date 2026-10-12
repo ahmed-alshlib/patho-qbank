@@ -7,6 +7,8 @@ import { getExpiryNotices } from "@/lib/access";
 import { logout } from "../actions-auth";
 import NavLinks from "@/components/NavLinks";
 import ThemeToggle from "@/components/ThemeToggle";
+import AnnouncementBanner from "@/components/AnnouncementBanner";
+import { getLiveAnnouncements } from "@/lib/announcements";
 
 function Brand() {
   return (
@@ -21,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getUser();
   if (!user) redirect("/api/auth/logout?k=1");
   if (user.isAdmin) redirect("/admin");
-  const [counts, notices] = await Promise.all([getCounts(user.id), getExpiryNotices(user.id)]);
+  const [counts, notices, live] = await Promise.all([getCounts(user.id), getExpiryNotices(user.id), getLiveAnnouncements()]);
   const badges = { "/incorrect": counts.incorrect };
   const initials = user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
@@ -49,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">
+        <AnnouncementBanner items={live} />
         {notices.map((n) => (
           <Link key={n.subjectId} href="/plans" data-testid="expiry-banner" className={`card mb-4 flex items-center gap-3 !p-4 text-sm ${n.kind === "ended" ? "!border-bad/40" : "!border-warn/40"}`}>
             <Clock className={`h-4 w-4 shrink-0 ${n.kind === "ended" ? "text-bad" : "text-warn"}`} />
