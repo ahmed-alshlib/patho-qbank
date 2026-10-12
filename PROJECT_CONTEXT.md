@@ -75,6 +75,13 @@ A question bank ("QBank") website for ~800 medical students. Started as "Patho Q
 - **Exam tags replace difficulty**: `questions.tags` (comma-separated, e.g. "Final 10/2022, Mid 03/2025"); shown as chips on questions; session builder has an "Exams and years" filter (none picked = all; "No tag" option). Import JSON uses `"tags": "Final 01/2026"` (string or array); `difficulty` is ignored (DB column kept). `lib/tags.ts`.
 - **Summaries**: table `summaries` (chapter_id, title, body, order; RLS on; migration applied to live Supabase). Admin → Summaries tab: pick subject, then chapter, add/edit/delete. Student `/summaries` and `/summaries/[id]` (titles visible to all, text only for subscribed subjects). Body uses a safe mini-format (`#`, `-`, `1.`, `>`, `**bold**`, `==highlight==`) rendered by `components/RichText.tsx`. Included in Backup (content group).
 
+## 7f. Added 12 Oct
+- Auth pages (login/register/forgot/verify/reset) redesigned: photo background `public/auth-bg.jpg` (allowed in middleware matcher), frosted-glass form card, frosted-glass Arabic quote "بقدر الكد تكتسب المعالي — الإمام الشافعي" in IBM Plex Sans Arabic (`@fontsource/ibm-plex-sans-arabic`), always dark palette. `src/app/(auth)/AuthShell.tsx`.
+
+## 7g. Added 12 Oct (later)
+- **Announcements**: table `announcements` (message, level info|warning|urgent, active, expires_at; RLS on; migration applied to live Supabase). Admin → Announcements (publish/edit/hide/delete, optional "hide after" date). Students see up to 3 live ones at the top of every page (`components/AnnouncementBanner.tsx`, cached 30 s via tag `announcements`); info/warning can be dismissed (localStorage), urgent cannot. Included in Backup.
+- **Admin redesign**: light frosted-glass layout over `public/admin-bg.jpg` (allowed in middleware), menu sidebar on the RIGHT (`(admin)/layout.tsx`, `AdminNav.tsx`, `adminNav.ts`; `.admin-light` tokens in globals.css). `AdminTabs` now only renders the page title. On phones the menu is a scrolling chip row.
+
 ## 8. Open items / next steps
 1. Upload latest zip to GitHub (Vercel redeploys); set prices, bank details, WhatsApp in Admin → Settings.
 2. **Reset Supabase DB password**, update `DATABASE_URL` in Vercel.
