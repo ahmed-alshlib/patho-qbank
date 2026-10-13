@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
-import { FileText, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { db, subjects, chapters, summaries } from "@/db";
+import { asc, count, eq } from "drizzle-orm";
+import { FileText, Heart, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { db, subjects, chapters, summaries, summaryLikes } from "@/db";
 import { getUser } from "@/lib/auth";
 import AdminTabs from "../../AdminTabs";
 import ConfirmButton from "@/components/ConfirmButton";
@@ -12,14 +12,15 @@ export const dynamic = "force-dynamic";
 
 const HINT = "Formatting: # Big heading, ## Heading, - bullet, 1. numbered, > note box, **bold**, ==highlight==. Leave a blank line between paragraphs.";
 
-function SummaryForm({ subjectId, chapterId, s }: { subjectId: string; chapterId: string; s?: { id: string; title: string; body: string } }) {
+function SummaryForm({ subjectId, chapterId, s }: { subjectId: string; chapterId: string; s?: { id: string; title: string; body: string; url: string } }) {
   return (
     <form action={saveSummary} className="space-y-3">
       <input type="hidden" name="subjectId" value={subjectId} /><input type="hidden" name="chapterId" value={chapterId} />
       {s && <input type="hidden" name="id" value={s.id} />}
       <input name="title" className="input" placeholder="Title, e.g. Cell injury: key points" defaultValue={s?.title} required maxLength={200} />
+      <input name="url" type="url" className="input" placeholder="Google Drive link (optional): students get an Open button" defaultValue={s?.url} maxLength={1000} dir="ltr" />
       <textarea name="body" rows={s ? 14 : 10} className="input font-mono text-sm leading-6" placeholder="Write or paste the summary here" defaultValue={s?.body} dir="auto" />
-      <p className="text-xs text-muted">{HINT}</p>
+      <p className="text-xs text-muted">Paste a Drive link (set sharing to "Anyone with the link") for a PDF or picture, or leave it empty and write the text below. {HINT}</p>
       <button className="btn !py-2">{s ? "Save changes" : <><Plus className="h-4 w-4" />Add summary</>}</button>
     </form>
   );
@@ -34,6 +35,8 @@ export default async function AdminSummaries({ searchParams }: { searchParams: P
   const chaps = subject ? await db.select().from(chapters).where(eq(chapters.subjectId, subject.id)).orderBy(asc(chapters.order), asc(chapters.name)) : [];
   const chapter = chaps.find((c) => c.id === sp.chapter) ?? null;
   const list = chapter ? await db.select().from(summaries).where(eq(summaries.chapterId, chapter.id)).orderBy(asc(summaries.order), asc(summaries.createdAt)) : [];
+  const likeRows = chapter ? await db.select({ id: summaryLikes.summaryId, n: count() }).from(summaryLikes).groupBy(summaryLikes.summaryId) : [];
+  const likes = new Map(likeRows.map((l) => [l.id, l.n]));
   const chip = (on: boolean) => `rounded-full border px-4 py-2 text-sm font-medium transition ${on ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`;
 
   return (
@@ -68,9 +71,9 @@ export default async function AdminSummaries({ searchParams }: { searchParams: P
           <h3 className="text-lg font-semibold">{list.length} summar{list.length === 1 ? "y" : "ies"} in {chapter.name}</h3>
           {list.map((s) => (
             <details key={s.id} className="card !p-0" data-testid="summary-row">
-              <summary className="flex cursor-pointer items-center gap-3 p-4"><FileText className="h-4 w-4 text-brand" /><span className="flex-1 text-sm font-medium">{s.title}</span><span className="text-xs text-muted">{s.body.length.toLocaleString()} characters</span></summary>
+              <summary className="flex cursor-pointer items-center gap-3 p-4"><FileText className="h-4 w-4 text-brand" /><span className="flex-1 text-sm font-medium">{s.title}</span><span className="flex items-center gap-1 text-xs text-muted"><Heart className="h-3.5 w-3.5 text-bad" />{likes.get(s.id) ?? 0}</span><span className="text-xs text-muted">{s.url ? "Drive link" : `${s.body.length.toLocaleString()} characters`}</span></summary>
               <div className="space-y-4 border-t border-line p-4">
-                <SummaryForm subjectId={subject.id} chapterId={chapter.id} s={{ id: s.id, title: s.title, body: s.body }} />
+                <SummaryForm subjectId={subject.id} chapterId={chapter.id} s={{ id: s.id, title: s.title, body: s.body, url: s.url }} />
                 <form action={deleteSummary}><input type="hidden" name="id" value={s.id} /><input type="hidden" name="subjectId" value={subject.id} /><input type="hidden" name="chapterId" value={chapter.id} />
                   <ConfirmButton message="Delete this summary?" className="btn-ghost !py-1.5 text-xs !text-bad"><Trash2 className="h-3.5 w-3.5" />Delete summary</ConfirmButton></form>
               </div>

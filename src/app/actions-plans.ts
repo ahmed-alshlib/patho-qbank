@@ -1,7 +1,7 @@
 "use server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { db, subjects, subscriptions } from "@/db";
+import { db, subjects, subscriptions, coupons } from "@/db";
 import { getUser } from "@/lib/auth";
 import { addMonths } from "@/lib/access";
 
@@ -21,14 +21,34 @@ export async function requestSubscription(formData: FormData) {
     .where(and(eq(subscriptions.userId, user.id), eq(subscriptions.subjectId, subjectId), inArray(subscriptions.status, ["pending", "active"])));
   // A running subscription can only be renewed in its last 14 days; pending requests are never duplicated.
   const blocked = mine.some((m) => m.status === "pending" || (m.expiresAt && m.expiresAt.getTime() - Date.now() > 14 * 86400000));
-  if (!blocked && !sub.isFree) await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "pending", reference: ref(), price: sub.price });
+  if (blocked || sub.isFree) redirect("/plans");
+  let price = sub.price, couponCode = "";
+  const code = String(formData.get("coupon") ?? "").trim().toUpperCase().slice(0, 30);
+  if (code) {
+    const bad = (m: string) => redirect(`/plans?couponError=${encodeURIComponent(m)}`);
+    const [c] = await db.select().from(coupons).where(eq(coupons.code, code)).limit(1);
+    if (!c || !c.active || (c.expiresAt && c.expiresAt.getTime() < Date.now()) || (c.subjectId && c.subjectId !== subjectId)) bad("That coupon code is not valid for this subject.");
+    const [again] = await db.select({ id: subscriptions.id }).from(subscriptions).where(and(eq(subscriptions.userId, user.id), eq(subscriptions.coupon, c!.code), inArray(subscriptions.status, ["pending", "active", "revoked"]))).limit(1);
+    if (again) bad("You have already used this coupon.");
+    // Count the use atomically so a limited coupon cannot be oversold.
+    const [took] = await db.update(coupons).set({ used: sql`${coupons.used} + 1` }).where(and(eq(coupons.id, c!.id), or(eq(coupons.maxUses, 0), lt(coupons.used, coupons.maxUses)))).returning({ id: coupons.id });
+    if (!took) bad("This coupon has been fully used.");
+    price = Math.round((sub.price * (100 - c!.percentOff)) / 100); couponCode = c!.code;
+  }
+  if (couponCode && price <= 0) {
+    const now = new Date();
+    const base = new Date(Math.max(now.getTime(), ...mine.map((m) => m.expiresAt?.getTime() ?? 0)));
+    await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "active", reference: "COUPON", price: 0, coupon: couponCode, listPrice: sub.price, approvedAt: now, expiresAt: addMonths(base, sub.durationMonths) });
+  } else await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "pending", reference: ref(), price, coupon: couponCode, listPrice: sub.price });
   redirect("/plans");
 }
 
 export async function cancelRequest(formData: FormData) {
   const user = await getUser();
   if (!user) redirect("/login");
-  await db.delete(subscriptions).where(and(eq(subscriptions.id, String(formData.get("id"))), eq(subscriptions.userId, user.id), eq(subscriptions.status, "pending")));
+  const [gone] = await db.delete(subscriptions).where(and(eq(subscriptions.id, String(formData.get("id"))), eq(subscriptions.userId, user.id), eq(subscriptions.status, "pending"))).returning({ coupon: subscriptions.coupon });
+  // A cancelled request gives its coupon use back.
+  if (gone?.coupon) await db.update(coupons).set({ used: sql`greatest(${coupons.used} - 1, 0)` }).where(eq(coupons.code, gone.coupon));
   redirect("/plans");
 }
 

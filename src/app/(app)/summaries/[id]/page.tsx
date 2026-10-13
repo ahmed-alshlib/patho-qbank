@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, ExternalLink, Lock } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getSummary } from "@/lib/summaries";
+import HeartButton from "@/components/HeartButton";
 import RichText from "@/components/RichText";
 import { EmptyState } from "@/components/ui";
 
@@ -19,8 +20,11 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
       <div>
         <p className="eyebrow">{s.subject} · {s.chapter}</p>
         <h1 className="mt-1 text-3xl font-semibold" dir="auto">{s.title}</h1>
+        {s.open && <div className="mt-3"><HeartButton id={s.id} liked={s.liked} count={s.likes} big /></div>}
       </div>
-      {s.open ? (
+      {s.open && s.url ? (
+        <div className="card card-solid space-y-3 !p-6"><p className="text-sm text-muted">This summary is a file on Google Drive. It opens in a new tab.</p><a href={s.url} target="_blank" rel="noopener noreferrer" className="btn inline-flex"><ExternalLink className="h-4 w-4" />Open file</a></div>
+      ) : s.open ? (
         <article className="card card-solid !p-6 sm:!p-8"><RichText text={s.body} /></article>
       ) : (
         <EmptyState icon={<Lock className="h-6 w-6" />} title="Subscribe to read this summary" text={`Summaries in ${s.subject} are included with the subject.`}><Link href={`/plans?need=${s.subjectId}`} className="btn mt-2">Subscribe</Link></EmptyState>

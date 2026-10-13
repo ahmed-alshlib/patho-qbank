@@ -47,6 +47,8 @@ export const summaries = pgTable("summaries", {
   chapterId: text("chapter_id").notNull().references(() => chapters.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   body: text("body").notNull().default(""),
+  /** Optional Google Drive (or other https) link. When set, students get an Open button instead of text. */
+  url: text("url").notNull().default(""),
   order: integer("order").notNull().default(0),
   createdAt: createdAt(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -163,6 +165,10 @@ export const subscriptions = pgTable("subscriptions", {
   status: text("status").notNull().default("pending"),
   reference: text("reference").notNull(),
   price: integer("price").notNull().default(0),
+  /** Coupon code used for this request (price above is already discounted). */
+  coupon: text("coupon").notNull().default(""),
+  /** Price before any coupon (0 = unknown, use the subject price). */
+  listPrice: integer("list_price").notNull().default(0),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: createdAt(),
@@ -211,3 +217,37 @@ export const userSessions = pgTable("user_sessions", {
   device: text("device").notNull().default(""),
   createdAt: createdAt(),
 }, (t) => [index("user_sessions_user_idx").on(t.userId)]);
+
+// ---------- Coupons (percentage discounts on a subject's price) ----------
+export const coupons = pgTable("coupons", {
+  id: id(),
+  code: text("code").notNull(),
+  percentOff: integer("percent_off").notNull(),
+  /** null = valid for every subject */
+  subjectId: text("subject_id").references(() => subjects.id, { onDelete: "cascade" }),
+  /** 0 = unlimited */
+  maxUses: integer("max_uses").notNull().default(0),
+  used: integer("used").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex("coupons_code_unique").on(t.code)]);
+
+// ---------- Love reactions on summaries ----------
+export const summaryLikes = pgTable("summary_likes", {
+  id: id(),
+  summaryId: text("summary_id").notNull().references(() => summaries.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex("sl_unique").on(t.userId, t.summaryId), index("sl_summary_idx").on(t.summaryId)]);
+
+// ---------- Manual income and costs (cash payments, hosting, ads...) for the revenue page ----------
+export const financeEntries = pgTable("finance_entries", {
+  id: id(),
+  /** income | cost */
+  kind: text("kind").notNull(),
+  amount: integer("amount").notNull(),
+  note: text("note").notNull().default(""),
+  entryAt: timestamp("entry_at", { withTimezone: true }).notNull(),
+  createdAt: createdAt(),
+}, (t) => [index("finance_entries_at_idx").on(t.entryAt)]);

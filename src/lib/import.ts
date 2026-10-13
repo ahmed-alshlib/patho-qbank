@@ -1,4 +1,5 @@
 import { and, asc, eq, sql } from "drizzle-orm";
+import { parseTags } from "@/lib/tags";
 import { db, subjects, chapters, topics, questions, answerChoices } from "@/db";
 
 export type ImportQ = { text: string; choices: string[]; correct: string; explanation: string; tags?: string | string[] };
@@ -22,7 +23,7 @@ export function checkQuestion(q: ImportQ): string | null {
 }
 
 /** Adds content without deleting anything: matching subject/chapter/topic are reused and questions already present (same text) are skipped, so student progress is kept. */
-export async function importChapters(input: ImportChapter[], opts: { subject?: string; chapter?: string; topic?: string } = {}): Promise<{ added: number; skipped: number }> {
+export async function importChapters(input: ImportChapter[], opts: { subject?: string; chapter?: string; topic?: string } = {}): Promise<{ added: number; skipped: number; merged: number }> {
   const list = input.map((c0) => {
     const c: ImportChapter = { ...c0 };
     if (opts.subject) c.subject = opts.subject;
@@ -39,7 +40,7 @@ export async function importChapters(input: ImportChapter[], opts: { subject?: s
       for (const q of t.questions) { const e = checkQuestion(q); if (e) throw new Error(e); }
     }
   }
-  let added = 0, skipped = 0;
+  let added = 0, skipped = 0, merged = 0;
   for (const c of list) {
     let [subj] = await db.select().from(subjects).where(sql`lower(${subjects.name}) = ${c.subject.trim().toLowerCase()}`).limit(1);
     if (!subj) [subj] = await db.insert(subjects).values({ name: c.subject.trim(), order: c.subjectOrder ?? 0 }).returning();
@@ -48,17 +49,23 @@ export async function importChapters(input: ImportChapter[], opts: { subject?: s
     for (const [ti, t] of c.topics!.entries()) {
       let [tp] = await db.select().from(topics).where(and(sql`lower(${topics.name}) = ${t.name.trim().toLowerCase()}`, eq(topics.chapterId, ch.id))).limit(1);
       if (!tp) [tp] = await db.insert(topics).values({ chapterId: ch.id, name: t.name.trim(), order: ti }).returning();
-      const have = await db.select({ text: questions.questionText, order: questions.order }).from(questions).where(eq(questions.topicId, tp.id)).orderBy(asc(questions.order));
-      const seen = new Set(have.map((h) => h.text.trim()));
+      const have = await db.select({ id: questions.id, text: questions.questionText, tags: questions.tags, order: questions.order }).from(questions).where(eq(questions.topicId, tp.id)).orderBy(asc(questions.order));
+      const seen = new Map(have.map((h) => [h.text.trim(), { id: h.id, tags: parseTags(h.tags) }]));
       let order = have.length ? have[have.length - 1].order + 1 : 0;
       for (const q of t.questions) {
-        if (seen.has(q.text.trim())) { skipped++; continue; }
+        const dup = seen.get(q.text.trim());
+        if (dup) {
+          // Same question already exists: keep it, but add any exam tags it did not have yet.
+          const add = parseTags(Array.isArray(q.tags) ? q.tags.join(",") : q.tags ?? "").filter((t) => !dup.tags.some((x) => x.toLowerCase() === t.toLowerCase()));
+          if (add.length) { dup.tags = [...dup.tags, ...add]; await db.update(questions).set({ tags: dup.tags.join(", ") }).where(eq(questions.id, dup.id)); merged++; } else skipped++;
+          continue;
+        }
         const [qr] = await db.insert(questions).values({ topicId: tp.id, questionText: q.text.trim(), explanation: q.explanation.trim(), tags: (Array.isArray(q.tags) ? q.tags.join(",") : q.tags ?? "").split(/[,،;]/).map((t) => t.trim()).filter(Boolean).join(", "), order: order++ }).returning();
         const correct = LABELS.indexOf(String(q.correct).toUpperCase());
         await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: qr.id, label: LABELS[i], text: String(text).trim(), isCorrect: i === correct })));
-        seen.add(q.text.trim()); added++;
+        seen.set(q.text.trim(), { id: qr.id, tags: parseTags(qr.tags) }); added++;
       }
     }
   }
-  return { added, skipped };
+  return { added, skipped, merged };
 }

@@ -5,12 +5,14 @@ import { AlertTriangle, ChevronLeft, ChevronRight, Clock, Flag, GraduationCap, H
 import { answerInSession, finishSession } from "@/app/actions-session";
 import { toggleBookmark } from "@/app/actions-study";
 import type { Hl, StudyQuestion } from "@/lib/questions";
+import { FontSizeControl, SessionProgress, useFontScale } from "@/components/FontSize";
 import HighlightedText from "@/components/HighlightedText";
 
 const clock = (s: number) => `${Math.floor(s / 3600) ? Math.floor(s / 3600) + ":" : ""}${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 export default function ExamClient({ testId, questions, startAt, remainingSec }: { testId: string; questions: StudyQuestion[]; startAt: number; remainingSec: number | null }) {
   const router = useRouter();
+  const font = useFontScale();
   const [i, setI] = useState(startAt);
   const [answers, setAnswers] = useState<Record<string, string>>(Object.fromEntries(questions.filter((q) => q.selected).map((q) => [q.id, q.selected!])));
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
@@ -70,14 +72,16 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
   const urgent = left !== null && left <= 60, warn = left !== null && left <= 300;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5" style={font.style}>
       <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 border-b border-line bg-bg/90 px-4 py-3 backdrop-blur lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0">
         <span className="chip !text-brand"><GraduationCap className="h-3.5 w-3.5" />Exam mode</span>
-        <span className="text-sm font-medium tabular-nums">{answeredCount}/{questions.length} answered</span>
+        <FontSizeControl f={font} />
         {left !== null
           ? <span className={`chip tabular-nums !text-sm !font-semibold ${urgent ? "!bg-bad/15 !text-bad animate-pulse" : warn ? "!bg-warn/15 !text-warn" : ""}`}><Clock className="h-3.5 w-3.5" />{clock(left)}</span>
           : <span className="chip">Untimed</span>}
       </div>
+
+      <SessionProgress done={answeredCount} total={questions.length} position={i + 1} />
 
       <div className="flex flex-wrap gap-1.5">
         {questions.map((x, n) => {
@@ -106,7 +110,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
         </div>
 
         <div>
-          <HighlightedText text={q.text} highlights={marks[q.id] ?? []} className="text-[17px] leading-relaxed sm:text-lg"
+          <HighlightedText text={q.text} highlights={marks[q.id] ?? []} className="qtext leading-relaxed"
             onAdd={(s, e) => setMarks((m) => ({ ...m, [q.id]: [...(m[q.id] ?? []), { id: `t-${++tempId.current}`, target: "question", start: s, end: e }] }))}
             onRemove={(ids) => setMarks((m) => ({ ...m, [q.id]: (m[q.id] ?? []).filter((h) => !ids.includes(h.id)) }))} />
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Highlights are temporary and help you work through the question.</p>
@@ -118,7 +122,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
             return (
               <button key={c.id} onClick={() => choose(c.id)} className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition duration-200 ${on ? "border-brand bg-brand/10 shadow-glow" : "border-line hover:border-brand/50 hover:bg-raised"}`}>
                 <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-bold ${on ? "bg-brand text-white" : "bg-raised text-muted"}`}>{c.label}</span>
-                <span className="text-[15px] leading-snug">{c.text}</span>
+                <span className="qchoice leading-snug">{c.text}</span>
                 <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] text-muted sm:block">{n + 1}</kbd>
               </button>
             );

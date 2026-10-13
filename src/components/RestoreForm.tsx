@@ -5,7 +5,7 @@ import { BACKUP_FORMAT, BACKUP_TABLES } from "@/lib/backup";
 
 type Parsed = { created: string; tables: Record<string, Record<string, unknown>[]> };
 type Result = Record<string, { inserted: number; skipped: number; failed: number }>;
-const LABEL: Record<string, string> = { subjects: "Subjects", chapters: "Chapters", summaries: "Summaries", announcements: "Announcements", topics: "Topics", questions: "Questions", answer_choices: "Answer choices", users: "Students", subscriptions: "Subscriptions", settings: "Settings", tests: "Sessions", test_questions: "Session questions", user_answers: "Answers", bookmarks: "Bookmarks", notes: "Notes", highlights: "Highlights", reported_questions: "Reports" };
+const LABEL: Record<string, string> = { subjects: "Subjects", chapters: "Chapters", summaries: "Summaries", announcements: "Announcements", topics: "Topics", questions: "Questions", answer_choices: "Answer choices", users: "Students", subscriptions: "Subscriptions", settings: "Settings", tests: "Sessions", test_questions: "Session questions", user_answers: "Answers", bookmarks: "Bookmarks", notes: "Notes", highlights: "Highlights", reported_questions: "Reports", coupons: "Coupons", finance_entries: "Income and costs", summary_likes: "Summary loves" };
 
 export default function RestoreForm() {
   const [parsed, setParsed] = useState<Parsed | null>(null);

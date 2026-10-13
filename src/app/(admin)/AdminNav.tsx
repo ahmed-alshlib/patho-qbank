@@ -8,7 +8,7 @@ export default function AdminNav({ variant, counts }: { variant: "side" | "top";
   const tab = useSearchParams().get("tab") ?? "overview";
   const activeId =
     path.startsWith("/admin/content") ? "content" : path.startsWith("/admin/summaries") ? "summaries" : path.startsWith("/admin/announcements") ? "announcements"
-    : path.startsWith("/admin/backup") ? "backup" : path.startsWith("/admin/students") ? "students" : tab;
+    : path.startsWith("/admin/backup") ? "backup" : path.startsWith("/admin/revenue") ? "revenue" : path.startsWith("/admin/coupons") ? "coupons" : path.startsWith("/admin/students") ? "students" : tab;
   const badge = (id: string) => (counts[id] ? <span className="ml-auto rounded-full bg-bad px-1.5 text-[11px] font-bold text-white">{counts[id]}</span> : null);
 
   if (variant === "top")

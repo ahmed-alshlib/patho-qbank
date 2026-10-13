@@ -29,7 +29,7 @@ export default function ImportForm({ tree, sample }: { tree: Tree; sample: strin
   const val = (sel: string, nv: string) => (sel === NEW ? nv.trim() : sel);
   return (
     <form action={importJson} className="space-y-3">
-      <p className="text-sm text-muted">Optional: choose where the questions go. Anything left on "From the file" uses the names written in the JSON. Existing questions are skipped and nothing is deleted.</p>
+      <p className="text-sm text-muted">Optional: choose where the questions go. Anything left on "From the file" uses the names written in the JSON. Questions that already exist are not duplicated: their new exam dates are added to the tags. Nothing is deleted.</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <Pick label="Subject" value={s} onChange={(v) => { setS(v); setC(""); setT(""); }} newValue={sn} onNew={setSn} options={tree.map((x) => x.name)} fileLabel="From the file" />
         <Pick label="Chapter" value={c} onChange={(v) => { setC(v); setT(""); }} newValue={cn} onNew={setCn} options={subj?.chapters.map((x) => x.name) ?? []} fileLabel="From the file" />

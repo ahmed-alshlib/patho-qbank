@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Clock, CreditCard, LogOut, Microscope, Plus } from "lucide-react";
+import { Clock, LogOut, Microscope, Plus } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getCounts } from "@/lib/stats";
 import { getExpiryNotices } from "@/lib/access";
 import { logout } from "../actions-auth";
 import NavLinks from "@/components/NavLinks";
 import ThemeToggle from "@/components/ThemeToggle";
+import MobileMenu from "@/components/MobileMenu";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { getLiveAnnouncements } from "@/lib/announcements";
 
@@ -47,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-[rgb(var(--glass)/.7)] px-4 py-3 backdrop-blur-xl lg:hidden">
         <Brand />
-        <div className="flex gap-2"><Link href="/plans" aria-label="Subscriptions" className="btn-ghost !p-2.5"><CreditCard className="h-4 w-4" /></Link><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
+        <div className="flex gap-2"><MobileMenu badges={badges} /><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
       </header>
 
       <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">

@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { FileText, Lock } from "lucide-react";
+import { ExternalLink, FileText, Lock } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { listSummaryGroups } from "@/lib/summaries";
+import HeartButton from "@/components/HeartButton";
 import { EmptyState } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +26,18 @@ export default async function Summaries() {
                 <h3 className="font-display text-lg font-semibold">{c.name}</h3>
                 <div className="space-y-1">
                   {c.items.map((it) => (
-                    <Link key={it.id} href={`/summaries/${it.id}`} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-raised">
-                      <FileText className="h-4 w-4 shrink-0 text-brand" /><span className="flex-1">{it.title}</span>{!g.open && <Lock className="h-3.5 w-3.5 text-muted" />}
-                    </Link>
+                    <div key={it.id} className="flex items-center gap-1 rounded-lg transition hover:bg-raised">
+                      {it.url ? (
+                        <a href={it.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-sm">
+                          <ExternalLink className="h-4 w-4 shrink-0 text-brand" /><span className="flex-1">{it.title}</span><span className="text-[11px] text-muted">Drive</span>
+                        </a>
+                      ) : (
+                        <Link href={`/summaries/${it.id}`} className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-sm">
+                          <FileText className="h-4 w-4 shrink-0 text-brand" /><span className="flex-1">{it.title}</span>{!g.open && <Lock className="h-3.5 w-3.5 text-muted" />}
+                        </Link>
+                      )}
+                      {g.open && <HeartButton id={it.id} liked={it.liked} count={it.likes} />}
+                    </div>
                   ))}
                 </div>
               </div>

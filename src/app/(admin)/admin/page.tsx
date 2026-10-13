@@ -172,7 +172,7 @@ async function Overview() {
         {card("Students", light.students, `+${light.new7} in the last 7 days`, "/admin?tab=students")}
         {card("With active access", light.subscribed, light.students ? `${Math.round((light.subscribed / light.students) * 100)}% of students` : "", "/admin?tab=students&status=active")}
         {card("Active in 24 hours", act.activeToday, `${act.activeWeek} different students in the last 7 days`)}
-        {card("Revenue this month", money(light.revenue_month), `Last month: ${money(light.revenue_last)}`)}
+        {card("Revenue this month", money(light.revenue_month), `Last month: ${money(light.revenue_last)} · full report`, "/admin/revenue")}
         {card("Waiting for approval", light.pending, light.pending ? "Open the requests" : "All clear", "/admin?tab=requests", light.pending ? "text-warn" : "")}
         {card("Open reports", light.reports, light.reports ? "Questions students flagged" : "All clear", "/admin?tab=reports", light.reports ? "text-warn" : "")}
       </div>

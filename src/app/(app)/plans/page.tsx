@@ -9,7 +9,7 @@ import { requestSubscription, cancelRequest, enrollFree } from "../../actions-pl
 
 export const dynamic = "force-dynamic";
 
-export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; need?: string }> }) {
+export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; need?: string; couponError?: string }> }) {
   const sp = await searchParams;
   const user = (await requireUser());
   const [subs, mine, cfg] = await Promise.all([
@@ -31,6 +31,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const pendings = subs.filter((s) => pend(s.id)).map((s) => ({ s, st: { s: pend(s.id)! } }));
   const wa = cfg.whatsapp.replace(/\D/g, "");
   const msg = (name: string, price: number, r: string) => encodeURIComponent(`Hello, I'm ${user.name} (${user.email}). I paid ${price} ${cfg.currency} for ${name}. Reference: ${r}`);
+  const couponBox = (s: { isFree: boolean; price: number }) => !s.isFree && s.price > 0 ? <input name="coupon" className="input mb-2 !py-2 text-center text-sm uppercase tracking-wider" placeholder="Coupon code (optional)" maxLength={30} dir="ltr" autoComplete="off" /> : null;
   const hasBank = cfg.bank_name || cfg.account_number;
 
   return (
@@ -41,6 +42,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         <p className="mt-2 max-w-2xl text-sm text-muted">Each subject is a separate package. Paid subjects unlock when your payment is approved; free subjects unlock instantly. Access lasts for the number of months shown on each card.</p>
       </div>
 
+      {sp.couponError && <div className="card !border-bad/40 text-sm text-bad" role="alert">{sp.couponError}</div>}
       {sp.need && <div className="card !border-warn/40 flex items-center gap-3 text-sm"><Lock className="h-4 w-4 text-warn" />Subscribe to that subject to open its questions.</div>}
 
       <div className="stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -62,18 +64,18 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
                 <div className="mt-auto space-y-2">
                   <p className="text-sm text-muted">Active until <b className="text-ink">{fmt(sub!.expiresAt)}</b></p>
                   {pend(s.id) ? <p className="text-xs text-warn">Renewal pending · ref <b className="tracking-widest">{pend(s.id)!.reference}</b></p> : sub!.expiresAt!.getTime() - now <= 14 * 86400000 && (
-                    <form action={s.isFree ? enrollFree : requestSubscription}><input type="hidden" name="subjectId" value={s.id} /><button className="btn w-full" disabled={!s.isFree && s.price <= 0}>Renew for {s.durationMonths} more {s.durationMonths === 1 ? "month" : "months"}</button></form>
+                    <form action={s.isFree ? enrollFree : requestSubscription}><input type="hidden" name="subjectId" value={s.id} />{couponBox(s)}<button className="btn w-full" disabled={!s.isFree && s.price <= 0}>Renew for {s.durationMonths} more {s.durationMonths === 1 ? "month" : "months"}</button></form>
                   )}
                 </div>
               )}
               {kind === "pending" && (
                 <form action={cancelRequest} className="mt-auto"><input type="hidden" name="id" value={sub!.id} />
-                  <p className="mb-2 text-sm text-muted">Reference <b className="tracking-widest text-ink">{sub!.reference}</b>. Waiting for payment approval.</p>
+                  <p className="mb-2 text-sm text-muted">Reference <b className="tracking-widest text-ink">{sub!.reference}</b>. Waiting for payment approval.{sub!.coupon && <> Coupon <b className="text-good">{sub!.coupon}</b> applied: <b className="text-ink">{sub!.price} {cfg.currency}</b>.</>}</p>
                   <ConfirmButton title="Cancel this request?" confirmLabel="Cancel request" message="Your pending request will be removed. You can request again any time." className="btn-ghost w-full !py-2 text-xs"><X className="h-3.5 w-3.5" />Cancel request</ConfirmButton></form>
               )}
               {(kind === "none" || kind === "expired" || kind === "rejected") && (
                 <form action={s.isFree ? enrollFree : requestSubscription} className="mt-auto"><input type="hidden" name="subjectId" value={s.id} />
-                  <button className="btn w-full" disabled={!s.isFree && s.price <= 0}>{s.isFree ? (kind === "expired" ? "Enroll again (free)" : "Enroll for free") : kind === "expired" ? "Renew" : "Subscribe"}</button>
+                  {couponBox(s)}<button className="btn w-full" disabled={!s.isFree && s.price <= 0}>{s.isFree ? (kind === "expired" ? "Enroll again (free)" : "Enroll for free") : kind === "expired" ? "Renew" : "Subscribe"}</button>
                   {!s.isFree && s.price <= 0 && <p className="mt-2 text-center text-xs text-muted">Price not set yet.</p>}</form>
               )}
             </div>
@@ -86,7 +88,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           <div><p className="eyebrow">How to pay</p><h2 className="mt-1 text-2xl font-semibold">Bank transfer, then send the receipt on WhatsApp</h2></div>
           <ol className="space-y-3 text-sm">
             <li className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand/15 text-xs font-bold text-brand">1</span>
-              <div>Transfer the amount ({pendings.map((p) => `${p.s.name}: ${p.s.price} ${cfg.currency}`).join(" · ")}).
+              <div>Transfer the amount ({pendings.map((p) => `${p.s.name}: ${p.st.s.price} ${cfg.currency}`).join(" · ")}).
                 {hasBank ? (
                   <div className="mt-2 flex items-start gap-3 rounded-xl bg-raised p-3"><Landmark className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                     <div className="space-y-0.5">{cfg.bank_name && <div><span className="text-muted">Bank:</span> {cfg.bank_name}</div>}
@@ -99,7 +101,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
                 {cfg.payment_note && <div className="mt-1 text-muted">{cfg.payment_note}</div>}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {pendings.map((p) => wa
-                    ? <a key={p.s.id} className="btn !bg-[#25D366] !bg-none" target="_blank" rel="noreferrer" href={`https://wa.me/${wa}?text=${msg(p.s.name, p.s.price, p.st.s!.reference)}`}><MessageCircle className="h-4 w-4" />WhatsApp: {p.s.name} ({p.st.s!.reference})</a>
+                    ? <a key={p.s.id} className="btn !bg-[#25D366] !bg-none" target="_blank" rel="noreferrer" href={`https://wa.me/${wa}?text=${msg(p.s.name, p.st.s.price, p.st.s!.reference)}`}><MessageCircle className="h-4 w-4" />WhatsApp: {p.s.name} ({p.st.s!.reference})</a>
                     : <span key={p.s.id} className="chip">{p.s.name}: {p.st.s!.reference}</span>)}
                   {!wa && <span className="text-warn">WhatsApp number has not been added yet.</span>}
                 </div></div></li>

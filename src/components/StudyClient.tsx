@@ -6,6 +6,7 @@ import { Check, ChevronLeft, ChevronRight, Clock, Flag, Highlighter, Keyboard, R
 import { addHighlight, removeHighlights, reportQuestion, saveNote, submitAnswer, toggleBookmark } from "@/app/actions-study";
 import { answerInSession, finishSession } from "@/app/actions-session";
 import type { Hl, Reveal, StudyQuestion } from "@/lib/questions";
+import { FontSizeControl, SessionProgress, useFontScale } from "@/components/FontSize";
 import HighlightedText from "@/components/HighlightedText";
 import { ProgressRing } from "@/components/ui";
 
@@ -15,6 +16,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   questions: StudyQuestion[]; startAt: number; title: string; backHref: string; backLabel: string; fresh?: boolean; testId?: string;
 }) {
   const router = useRouter();
+  const font = useFontScale();
   const [i, setI] = useState(startAt);
   const [selected, setSelected] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, Reveal>>(Object.fromEntries(questions.filter((q) => q.previous).map((q) => [q.id, q.previous!])));
@@ -152,17 +154,21 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   }
 
   const hasNote = !!notes[q.id]?.trim();
+  const doneCount = questions.filter((x) => isDone(x.id)).length;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5" style={font.style}>
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link href={backHref} className="inline-flex items-center gap-1 text-muted transition hover:text-ink"><ChevronLeft className="h-4 w-4" />{backLabel}</Link>
         <span className="font-medium">{title}</span>
         <span className="flex items-center gap-2">
+          <FontSizeControl f={font} />
           <span className="chip tabular-nums"><Clock className="h-3.5 w-3.5" />{reveal ? "done" : fmt(elapsed)}</span>
           {testId && <button className="btn-ghost !px-3 !py-1.5 text-xs" disabled={finishing} onClick={() => void finishNow()}>End session</button>}
         </span>
       </div>
+
+      <SessionProgress done={doneCount} total={questions.length} position={i + 1} />
 
       <div className="flex flex-wrap gap-1.5" aria-label="Question navigator">
         {questions.map((x, n) => {
@@ -196,7 +202,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
 
         <div>
           <HighlightedText text={q.text} highlights={tempHls[q.id] ?? []}
-            onAdd={(s, e) => onAddHl("question", s, e)} onRemove={onRemoveHl} className="text-[17px] leading-relaxed sm:text-lg" />
+            onAdd={(s, e) => onAddHl("question", s, e)} onRemove={onRemoveHl} className="qtext leading-relaxed" />
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Highlights on the question are temporary and clear when you answer.</p>
         </div>
 
@@ -228,7 +234,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
                 <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-bold transition ${badge}`}>
                   {isRight ? <Check className="h-4 w-4" /> : isWrong ? <X className="h-4 w-4" /> : c.label}
                 </span>
-                <span className="text-[15px] leading-snug">{c.text}</span>
+                <span className="qchoice leading-snug">{c.text}</span>
                 {!reveal && <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] text-muted group-hover:block">{n + 1}</kbd>}
               </button>
             );
@@ -242,7 +248,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
               {reveal.isCorrect ? "Correct" : `Incorrect. The right answer is ${q.choices.find((c) => c.id === reveal.correctChoiceId)?.label}.`}
             </div>
             <HighlightedText text={reveal.explanation} highlights={(hls[q.id] ?? []).filter((h) => h.target === "explanation")}
-              onAdd={(s, e) => onAddHl("explanation", s, e)} onRemove={onRemoveHl} className="text-sm leading-relaxed" />
+              onAdd={(s, e) => onAddHl("explanation", s, e)} onRemove={onRemoveHl} className="qexp leading-relaxed" />
             {reveal.peers && (
               <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted" data-testid="peer-stat">
                 <Users className="h-3.5 w-3.5" /><span><b className="text-ink">{reveal.peers.pct}%</b> of students got this right on their first try ({reveal.peers.n} students)</span>
