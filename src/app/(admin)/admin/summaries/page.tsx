@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { asc, count, eq } from "drizzle-orm";
+import { asc, count, desc, eq } from "drizzle-orm";
 import { FileText, Heart, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { db, subjects, chapters, summaries, summaryLikes } from "@/db";
 import { getUser } from "@/lib/auth";
@@ -37,6 +37,10 @@ export default async function AdminSummaries({ searchParams }: { searchParams: P
   const list = chapter ? await db.select().from(summaries).where(eq(summaries.chapterId, chapter.id)).orderBy(asc(summaries.order), asc(summaries.createdAt)) : [];
   const likeRows = chapter ? await db.select({ id: summaryLikes.summaryId, n: count() }).from(summaryLikes).groupBy(summaryLikes.summaryId) : [];
   const likes = new Map(likeRows.map((l) => [l.id, l.n]));
+  const loved = await db.select({ id: summaries.id, title: summaries.title, url: summaries.url, n: count(summaryLikes.id), chapterId: chapters.id, chapter: chapters.name, subjectId: subjects.id, subject: subjects.name })
+    .from(summaryLikes).innerJoin(summaries, eq(summaryLikes.summaryId, summaries.id)).innerJoin(chapters, eq(summaries.chapterId, chapters.id)).innerJoin(subjects, eq(chapters.subjectId, subjects.id))
+    .groupBy(summaries.id, chapters.id, subjects.id).orderBy(desc(count(summaryLikes.id)), asc(summaries.title)).limit(10);
+  const topN = loved[0]?.n ?? 1;
   const chip = (on: boolean) => `rounded-full border px-4 py-2 text-sm font-medium transition ${on ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`;
 
   return (
@@ -45,6 +49,18 @@ export default async function AdminSummaries({ searchParams }: { searchParams: P
 
       {sp.error && <div className="card !border-bad/40 text-sm text-bad" role="alert">{sp.error}</div>}
       {sp.saved && <div className="card !border-good/40 text-sm text-good">Saved.</div>}
+
+      <section className="card space-y-3" data-testid="most-loved">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Heart className="h-5 w-5 fill-bad text-bad" />Most loved summaries</h2>
+        {loved.length === 0 ? <p className="text-sm text-muted">No hearts yet. When students love a summary it appears here.</p> : loved.map((l, i) => (
+          <Link key={l.id} href={`/admin/summaries?subject=${l.subjectId}&chapter=${l.chapterId}`} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-raised" data-testid="loved-row">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-raised text-xs font-bold text-muted">{i + 1}</span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium" dir="auto">{l.title}</span><span className="block truncate text-xs text-muted">{l.subject} · {l.chapter}{l.url ? " · Drive link" : ""}</span></span>
+            <span className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-raised sm:block"><span className="block h-full rounded-full bg-bad/70" style={{ width: `${(l.n / topN) * 100}%` }} /></span>
+            <span className="flex w-10 shrink-0 items-center justify-end gap-1 text-sm font-semibold tabular-nums text-bad"><Heart className="h-3.5 w-3.5 fill-bad" />{l.n}</span>
+          </Link>
+        ))}
+      </section>
 
       <section className="card space-y-4">
         <div>

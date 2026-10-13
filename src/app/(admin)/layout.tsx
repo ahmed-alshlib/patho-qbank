@@ -1,8 +1,9 @@
+import Logo from "@/components/Logo";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { count, eq, isNull } from "drizzle-orm";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { db, subscriptions, reportedQuestions } from "@/db";
 import { getUser } from "@/lib/auth";
 import { logout } from "../actions-auth";
@@ -19,8 +20,8 @@ const navCounts = unstable_cache(async () => {
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white shadow-soft"><ShieldCheck className="h-5 w-5" /></span>
-      <span className="font-display text-xl font-semibold tracking-tight">Rakeez <span className="text-muted">Admin</span></span>
+      <Logo className="h-7" tone="deep" />
+      <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-brand">Admin</span>
     </div>
   );
 }
@@ -32,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const counts = await navCounts();
   return (
     <div className="admin-light relative min-h-screen text-ink">
-      <div aria-hidden className="fixed inset-0 -z-10 bg-[#c9cde6] bg-[url('/admin-bg.jpg')] bg-cover bg-center" />
+      <div aria-hidden className="fixed inset-0 -z-10 bg-[#cfe6d6] bg-[url('/admin-bg-g.jpg')] bg-cover bg-center" />
       <div className="mx-auto flex max-w-[1500px] flex-col gap-4 p-3 sm:p-5 lg:flex-row lg:items-start lg:gap-5 lg:p-6">
         <header className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/50 p-3 backdrop-blur-2xl lg:hidden">
           <Brand />

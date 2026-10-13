@@ -3,28 +3,29 @@
 @tailwind utilities;
 
 /* Design tokens. Colours are RGB triplets so Tailwind can apply opacity. */
+/* Green theme built from the Rakeez logo (#1EC66F on deep green). */
 :root {
-  --bg: 244 246 251; --surface: 255 255 255; --raised: 238 241 248; --line: 222 227 238;
-  --ink: 18 24 38; --muted: 98 108 128;
-  --brand: 0 113 227; --brand2: 110 102 240;
-  --good: 22 163 74; --bad: 220 38 38; --warn: 202 138 4; --shadow: 30 41 80;
-  --glass: 255 255 255; --glass-a: .72; --float-a: .86; --on-brand: 255 255 255;
+  --bg: 255 255 255; --surface: 255 255 255; --raised: 240 247 243; --line: 218 232 223;
+  --ink: 12 31 20; --muted: 87 110 97;
+  --brand: 14 140 76; --brand2: 16 168 120;
+  --good: 22 150 80; --bad: 220 38 38; --warn: 202 138 4; --shadow: 14 70 40;
+  --glass: 255 255 255; --glass-a: .78; --float-a: .9; --on-brand: 255 255 255;
 }
 .dark {
-  --bg: 8 11 20; --surface: 20 27 44; --raised: 31 39 60; --line: 44 52 74;
-  --ink: 245 247 252; --muted: 161 169 188;
-  --brand: 10 132 255; --brand2: 139 133 255;
-  --good: 48 209 88; --bad: 255 69 58; --warn: 255 214 10; --shadow: 0 0 0;
-  --glass: 23 30 48; --glass-a: .72; --float-a: .86;
+  --bg: 2 24 8; --surface: 7 38 17; --raised: 12 52 26; --line: 24 70 40;
+  --ink: 236 249 241; --muted: 146 186 160;
+  --brand: 30 198 111; --brand2: 52 211 153;
+  --good: 74 222 128; --bad: 255 99 90; --warn: 250 204 21; --shadow: 0 0 0;
+  --glass: 6 34 15; --glass-a: .8; --float-a: .92;
 }
 
-/* Admin area: always light, frosted glass over the photo background. */
+/* Admin area: always light, frosted glass over the green photo background. */
 .admin-light {
-  --bg: 244 246 251; --surface: 255 255 255; --raised: 236 239 250; --line: 208 215 235;
-  --ink: 22 28 52; --muted: 92 101 130;
-  --brand: 54 86 214; --brand2: 118 98 232;
-  --good: 22 163 74; --bad: 220 38 38; --warn: 202 138 4; --shadow: 40 50 110;
-  --glass: 255 255 255; --glass-a: .55; --float-a: .88;
+  --bg: 240 248 243; --surface: 255 255 255; --raised: 232 244 237; --line: 200 224 210;
+  --ink: 10 32 20; --muted: 80 108 92;
+  --brand: 12 132 72; --brand2: 16 160 116;
+  --good: 22 150 80; --bad: 220 38 38; --warn: 202 138 4; --shadow: 14 70 40;
+  --glass: 255 255 255; --glass-a: .58; --float-a: .9;
   color: rgb(var(--ink));
 }
 
@@ -32,11 +33,11 @@
   html { color-scheme: light dark; }
   body { @apply bg-bg font-sans text-ink antialiased; font-feature-settings: "cv11", "ss03"; font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
   body {
-    background-image: radial-gradient(54rem 28rem at 88% -8%, rgb(var(--brand) / .09), transparent 62%),
-                      radial-gradient(44rem 26rem at -8% 6%, rgb(var(--brand2) / .07), transparent 62%);
+    background-image: radial-gradient(54rem 28rem at 88% -8%, rgb(var(--brand) / .08), transparent 62%),
+                      radial-gradient(44rem 26rem at -8% 6%, rgb(var(--brand2) / .06), transparent 62%);
     background-attachment: fixed;
   }
-  .dark body { background-color: #0A0F1E; background-image: radial-gradient(60rem 34rem at 92% -10%, rgb(var(--brand) / .22), transparent 62%), radial-gradient(52rem 32rem at -10% 8%, rgb(var(--brand2) / .18), transparent 64%), radial-gradient(46rem 30rem at 50% 112%, rgb(20 184 166 / .12), transparent 66%), linear-gradient(160deg, #0B1226 0%, #0E1530 42%, #101A3A 72%, #0B1428 100%); }
+  .dark body { background-color: #021808; background-image: radial-gradient(60rem 34rem at 92% -10%, rgb(var(--brand) / .14), transparent 62%), radial-gradient(52rem 32rem at -10% 8%, rgb(var(--brand2) / .09), transparent 64%), linear-gradient(160deg, #021808 0%, #03200C 50%, #04290F 100%); }
   ::selection { background: rgb(var(--brand) / .28); }
   h1, h2, h3 { @apply font-display; letter-spacing: -.022em; font-weight: 650; }
   :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }

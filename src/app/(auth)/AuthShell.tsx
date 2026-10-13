@@ -1,5 +1,5 @@
 "use client";
-import { Microscope } from "lucide-react";
+import Logo from "@/components/Logo";
 import "@fontsource/ibm-plex-sans-arabic/500.css";
 import "@fontsource/ibm-plex-sans-arabic/600.css";
 
@@ -20,17 +20,17 @@ function Quote({ small = false }: { small?: boolean }) {
 /** Auth pages are always shown in the dark palette on top of the photo background. */
 export default function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="dark relative min-h-screen bg-[#0b2a6b] bg-[url('/auth-bg.jpg')] bg-cover bg-center text-white">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/10 via-transparent to-slate-950/30" />
+    <main className="dark relative min-h-screen bg-[#052e16] bg-[url('/auth-bg-g.jpg')] bg-cover bg-center text-white">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#031a0c]/20 via-transparent to-[#031a0c]/45" />
       <div className="relative grid min-h-screen lg:grid-cols-2">
         <section className="hidden flex-col justify-between p-12 lg:flex">
-          <div className="flex items-center gap-2.5"><span className="grid h-10 w-10 place-items-center rounded-xl border border-white/40 bg-white/20 backdrop-blur-xl"><Microscope className="h-5 w-5" /></span><span className="font-display text-2xl font-semibold">Rakeez</span></div>
+          <div className="flex items-center"><Logo className="h-10" tone="white" /></div>
           <div className="mx-auto w-full max-w-xl"><Quote /></div>
           <p className="text-sm text-white/80">Private access for enrolled students.</p>
         </section>
 
         <section className="flex flex-col items-center justify-center gap-6 p-5 sm:p-8">
-          <div className="w-full max-w-md rounded-[2rem] border border-white/35 bg-slate-950/50 p-7 [&_.text-muted]:!text-white/80 [&_.text-brand]:!text-white [&_a.text-brand]:underline [&_a.text-brand]:underline-offset-4 [&_.bg-line]:!bg-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_30px_80px_rgba(6,24,80,.4)] backdrop-blur-2xl sm:p-9">
+          <div className="w-full max-w-md rounded-[2rem] border border-white/35 bg-[#031a0c]/55 p-7 [&_.text-muted]:!text-white/80 [&_.text-brand]:!text-white [&_a.text-brand]:underline [&_a.text-brand]:underline-offset-4 [&_.bg-line]:!bg-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_30px_80px_rgba(2,20,8,.5)] backdrop-blur-2xl sm:p-9">
             {children}
           </div>
           <div className="w-full max-w-md lg:hidden"><Quote small /></div>

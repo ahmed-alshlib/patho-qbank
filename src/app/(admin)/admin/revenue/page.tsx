@@ -87,7 +87,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
           })}
         </div>
         <div className="flex justify-between text-[10px] text-muted"><span>{r.bars[0].label}</span><span>{r.bars[r.bars.length - 1].label}</span></div>
-        <p className="text-xs text-muted">Highest bar: {money(maxBar === 1 ? 0 : maxBar)}. Lighter purple part = income you added by hand.</p>
+        <p className="text-xs text-muted">Highest bar: {money(maxBar === 1 ? 0 : maxBar)}. Lighter part of a bar = income you added by hand.</p>
       </section>
 
       {/* By subject */}

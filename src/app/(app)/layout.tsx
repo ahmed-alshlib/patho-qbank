@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Clock, LogOut, Microscope, Plus } from "lucide-react";
+import { Clock, LogOut, Plus } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { getCounts } from "@/lib/stats";
 import { getExpiryNotices } from "@/lib/access";
@@ -9,14 +9,12 @@ import NavLinks from "@/components/NavLinks";
 import ThemeToggle from "@/components/ThemeToggle";
 import MobileMenu from "@/components/MobileMenu";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
+import Logo from "@/components/Logo";
 import { getLiveAnnouncements } from "@/lib/announcements";
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand2 text-white shadow-soft"><Microscope className="h-5 w-5" /></span>
-      <span className="font-display text-xl font-semibold tracking-tight">Rakeez</span>
-    </div>
+    <div className="flex items-center"><Logo className="h-7" /></div>
   );
 }
 
