@@ -7,13 +7,15 @@ import * as schema from "./schema";
 const url = process.env.DATABASE_URL ?? "postgres://missing:missing@127.0.0.1:5432/missing";
 
 const g = globalThis as unknown as { __pg?: ReturnType<typeof postgres> };
-// On Vercel a function is frozen between requests, so a pooled socket can go dead and the next query
-// hangs on it. Short idle/lifetime limits make the client drop old sockets and open fresh ones.
+// A page renders its layout and its content at the same time, so several queries run at once
+// (/plans needs about six). The pool must be wide enough or they queue and the request times out.
+// Idle sockets are kept for a while so they are reused instead of rebuilt on every request,
+// but are recycled often enough that a socket killed while the function slept is not used again.
 export const client = g.__pg ?? postgres(url, {
   prepare: false,
-  max: Number(process.env.DB_POOL_MAX ?? 3),
-  idle_timeout: 5,
-  max_lifetime: 120,
+  max: Number(process.env.DB_POOL_MAX ?? 6),
+  idle_timeout: 30,
+  max_lifetime: 600,
   connect_timeout: 10,
 });
 g.__pg = client;
