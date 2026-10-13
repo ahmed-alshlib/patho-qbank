@@ -7,7 +7,15 @@ import * as schema from "./schema";
 const url = process.env.DATABASE_URL ?? "postgres://missing:missing@127.0.0.1:5432/missing";
 
 const g = globalThis as unknown as { __pg?: ReturnType<typeof postgres> };
-export const client = g.__pg ?? postgres(url, { prepare: false, max: Number(process.env.DB_POOL_MAX ?? 3) });
+// On Vercel a function is frozen between requests, so a pooled socket can go dead and the next query
+// hangs on it. Short idle/lifetime limits make the client drop old sockets and open fresh ones.
+export const client = g.__pg ?? postgres(url, {
+  prepare: false,
+  max: Number(process.env.DB_POOL_MAX ?? 3),
+  idle_timeout: 5,
+  max_lifetime: 120,
+  connect_timeout: 10,
+});
 g.__pg = client;
 
 export const db = drizzle(client, { schema });
