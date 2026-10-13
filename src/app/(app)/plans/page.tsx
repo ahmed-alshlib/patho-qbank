@@ -9,7 +9,7 @@ import { requestSubscription, cancelRequest, enrollFree } from "../../actions-pl
 
 export const dynamic = "force-dynamic";
 
-export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; need?: string; couponError?: string }> }) {
+export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; need?: string; couponError?: string; couponFor?: string }> }) {
   const sp = await searchParams;
   const user = (await requireUser());
   const [subs, mine, cfg] = await Promise.all([
@@ -31,7 +31,12 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const pendings = subs.filter((s) => pend(s.id)).map((s) => ({ s, st: { s: pend(s.id)! } }));
   const wa = cfg.whatsapp.replace(/\D/g, "");
   const msg = (name: string, price: number, r: string) => encodeURIComponent(`Hello, I'm ${user.name} (${user.email}). I paid ${price} ${cfg.currency} for ${name}. Reference: ${r}`);
-  const couponBox = (s: { isFree: boolean; price: number }) => !s.isFree && s.price > 0 ? <input name="coupon" className="input mb-2 !py-2 text-center text-sm uppercase tracking-wider" placeholder="Coupon code (optional)" maxLength={30} dir="ltr" autoComplete="off" /> : null;
+  const couponBox = (s: { id: string; isFree: boolean; price: number }) => !s.isFree && s.price > 0 ? (
+    <>
+      <input name="coupon" className="input mb-2 !py-2 text-center text-sm uppercase tracking-wider" placeholder="Coupon code (optional)" maxLength={30} dir="ltr" autoComplete="off" />
+      {sp.couponError && sp.couponFor === s.id && <p className="mb-2 rounded-xl border border-bad/40 px-3 py-2 text-center text-xs text-bad" role="alert">{sp.couponError}</p>}
+    </>
+  ) : null;
   const hasBank = cfg.bank_name || cfg.account_number;
 
   return (
@@ -42,14 +47,14 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         <p className="mt-2 max-w-2xl text-sm text-muted">Each subject is a separate package. Paid subjects unlock when your payment is approved; free subjects unlock instantly. Access lasts for the number of months shown on each card.</p>
       </div>
 
-      {sp.couponError && <div className="card !border-bad/40 text-sm text-bad" role="alert">{sp.couponError}</div>}
+      {sp.couponError && !subs.some((x) => x.id === sp.couponFor) && <div className="card !border-bad/40 text-sm text-bad" role="alert">{sp.couponError}</div>}
       {sp.need && <div className="card !border-warn/40 flex items-center gap-3 text-sm"><Lock className="h-4 w-4 text-warn" />Subscribe to that subject to open its questions.</div>}
 
       <div className="stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {subs.map((s) => {
           const { kind, s: sub } = stateOf(s.id);
           return (
-            <div key={s.id} className="card flex flex-col gap-4" data-testid={`plan-${s.name}`}>
+            <div key={s.id} id={`plan-${s.id}`} className="card flex scroll-mt-24 flex-col gap-4" data-testid={`plan-${s.name}`}>
               <div className="flex items-start justify-between gap-2">
                 <h2 className="text-xl font-semibold">{s.name}</h2>
                 {kind === "active" && <span className="chip !bg-good/15 !text-good"><Check className="h-3 w-3" />Active</span>}

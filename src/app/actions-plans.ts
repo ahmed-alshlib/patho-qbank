@@ -25,7 +25,7 @@ export async function requestSubscription(formData: FormData) {
   let price = sub.price, couponCode = "";
   const code = String(formData.get("coupon") ?? "").trim().toUpperCase().slice(0, 30);
   if (code) {
-    const bad = (m: string) => redirect(`/plans?couponError=${encodeURIComponent(m)}`);
+    const bad = (m: string) => redirect(`/plans?couponError=${encodeURIComponent(m)}&couponFor=${encodeURIComponent(subjectId)}#plan-${encodeURIComponent(subjectId)}`);
     const [c] = await db.select().from(coupons).where(eq(coupons.code, code)).limit(1);
     if (!c || !c.active || (c.expiresAt && c.expiresAt.getTime() < Date.now()) || (c.subjectId && c.subjectId !== subjectId)) bad("That coupon code is not valid for this subject.");
     const [again] = await db.select({ id: subscriptions.id }).from(subscriptions).where(and(eq(subscriptions.userId, user.id), eq(subscriptions.coupon, c!.code), inArray(subscriptions.status, ["pending", "active", "revoked"]))).limit(1);
