@@ -95,3 +95,29 @@ A question bank ("QBank") website for ~800 medical students. Started as "Patho Q
 - Local Postgres via PGlite socket server (single connection only, in-memory); tests use env `DATABASE_URL=postgres://postgres:postgres@127.0.0.1:54329/postgres DB_POOL_MAX=1 SESSION_SECRET=<long> MAIL_CONSOLE=1`, then `drizzle-kit push --force`, `npx tsx scripts/seed.ts`, create test admin admin.test@gmail.com / password123. App: `npx next start -p 3113`.
 - Supabase schema changes go through migrations (apply_migration); new tables get RLS enabled.
 - Last e2e suites (e2e4, e2e5, e2e6b, e2e7, e2e8) all passed; the "set student password" action type-checks but was not browser-tested.
+
+## 7h. Student UX (12 Oct 2026)
+- Question screen (study + exam): A−/A+ font-size control (`src/components/FontSize.tsx`, saved per device in localStorage `rk_font_step`), session progress bar ("Question X of N", answered %).
+- Phone bottom bar: raised highlighted "New" session button in the centre (`NavLinks.tsx`).
+- Side menu: Bookmarks, Incorrect, Notes & Highlights grouped under "Review" (`NAV_ITEMS` in NavLinks.tsx).
+- `MobileMenu.tsx`: Menu button in the phone header opening a sheet with Summaries, Subscriptions and the Review group.
+- No new env vars or migrations.
+
+## 7i. 13 Oct 2026
+- Dark theme body now a visible diagonal navy→indigo gradient with violet/teal glows (globals.css `.dark body`).
+- Phone bottom bar: "+" button is icon only (no "New" label).
+- Summaries: new `summaries.url` column (migration summaries_add_url applied). Admin can paste a Google Drive link instead of text; students see an "Open (Drive)" item that opens in a new tab (link hidden from non-subscribers). No inline preview.
+- Importer: a question that already exists is not duplicated; new exam tags are merged into its tags (result shows "added new exam tags to N existing question(s)").
+
+## 7j. Coupons + summary hearts (13 Oct 2026)
+- Tables `coupons` (code, percent_off, subject_id nullable, max_uses 0=unlimited, used, expires_at, active) and `summary_likes` (unique user+summary); `subscriptions.coupon` column. Migration coupons_and_summary_likes applied on Supabase. Both included in backup (coupons in accounts group, summary_likes in activity group).
+- Admin: /admin/coupons (create, turn on/off, delete). Student: optional coupon box on paid subject cards in /plans; discounted price stored on the pending subscription and shown in payment instructions/WhatsApp text; each student uses a code once; 100% code activates immediately (reference COUPON); cancelling a pending request returns the use. Logic in `actions-plans.ts`.
+- Hearts: `HeartButton.tsx` + `toggleSummaryLike` (actions-summaries.ts); shown in summaries list and summary page for subscribed students; admin summary list shows the count.
+
+## 7k. Revenue page (13 Oct 2026)
+- /admin/revenue (sidebar "Revenue"): totals, today/7 days/month vs last month, pending value, average order, net profit, day/month chart, per-subject revenue and subscriber counts, conversion, free-to-paid, renewal rate, expected renewals, expiring list (7/14 days, email reminder), coupon performance and discount lost, top payers, new payers per week, sign-up-to-payment time, drop-off, approval speed, revoked list, manual income/cost entries. Logic in `src/lib/revenue.ts` (computed in memory from subscriptions; fine for ~1000s of rows).
+- Revenue counts subscriptions with status active and price > 0, plus manual income. FREE, ADMIN grants and 100% coupons are excluded. Cancelled requests are deleted by design, so they are not in drop-off.
+- Export: /api/admin/payments (CSV with BOM, opens in Excel).
+- New: table `finance_entries` (kind income|cost), column `subscriptions.list_price` (set when a request is made; older rows fall back to the subject price). Migration finance_entries_and_list_price applied. finance_entries is in the backup "accounts" group.
+- Students have no phone field, so expiry reminders use mailto; add a phone field if WhatsApp reminders are wanted.
+- Revenue date range (13 Oct): presets (today, 7, 30 days, this month default, last month, this year, all time) + custom from/to via `resolveRange` in revenue.ts. Money, chart (per day up to ~3 months, else per month), coupons, top payers, new payers, approval speed, drop-off, revoked follow the range; pending, live subscriber counts, expiring list and renewal rate are always "now". Comparison uses the previous equal period (previous full month for calendar months). Export `/api/admin/payments?preset=..|from=&to=` follows the range.
