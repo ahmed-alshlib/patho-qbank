@@ -121,3 +121,12 @@ A question bank ("QBank") website for ~800 medical students. Started as "Patho Q
 - New: table `finance_entries` (kind income|cost), column `subscriptions.list_price` (set when a request is made; older rows fall back to the subject price). Migration finance_entries_and_list_price applied. finance_entries is in the backup "accounts" group.
 - Students have no phone field, so expiry reminders use mailto; add a phone field if WhatsApp reminders are wanted.
 - Revenue date range (13 Oct): presets (today, 7, 30 days, this month default, last month, this year, all time) + custom from/to via `resolveRange` in revenue.ts. Money, chart (per day up to ~3 months, else per month), coupons, top payers, new payers, approval speed, drop-off, revoked follow the range; pending, live subscriber counts, expiring list and renewal rate are always "now". Comparison uses the previous equal period (previous full month for calendar months). Export `/api/admin/payments?preset=..|from=&to=` follows the range.
+- Admin Summaries page: 'Most loved summaries' top 10 by hearts (click opens that chapter for editing).
+- Student Subjects page now lists only subjects with an active subscription (empty state links to Subscriptions); locked subjects live on /plans.
+
+## 7l. Green theme + new logo (13 Oct 2026)
+- Colours are tokens in globals.css (`:root` light = white bg, `.dark` = deep green #021808 family, `.admin-light`); brand = logo green. Change those values to retheme.
+- Logo: `src/components/Logo.tsx` using public/logo-bright.png (dark mode / photos) and logo-deep.png (light mode); favicon/app icon = src/app/icon.png + apple-icon.png (square logo on deep green).
+- Backgrounds: public/auth-bg-g.jpg and public/admin-bg-g.jpg (green-tinted versions of the old photos; old blue ones removed). Middleware matcher now skips any .png/.jpg/.svg/.ico/.webp.
+- Student Subjects tab shows only subscribed subjects.
+- Sign-in/register pages use the white logo (Logo tone="white").
