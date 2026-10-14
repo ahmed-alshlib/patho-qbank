@@ -27,7 +27,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
   const [selected, setSelected] = useState<Set<string>>(new Set(initialTopics));
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [pool, setPool] = useState<Pool>("all");
-  const [tagSel, setTagSel] = useState<Set<string>>(new Set()); // empty = every question
+  const [tagSel, setTagSel] = useState<Set<string>>(new Set()); // keys are "subjectId::tag"; empty = every question
   const [count, setCount] = useState(20);
   const [randomize, setRandomize] = useState(true);
   const [timed, setTimed] = useState(false);
@@ -36,14 +36,47 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
   const [pending, start] = useTransition();
 
   const idx = POOLS.find((p) => p.id === pool)!.idx;
-  const allTags = useMemo(() => {
-    const set = new Set<string>(); let none = false;
-    for (const byTags of Object.values(counts)) for (const k of Object.keys(byTags)) { const t = parseTags(k); if (t.length) t.forEach((x) => set.add(x)); else none = true; }
-    return { list: sortTags([...set]), none };
-  }, [counts]);
-  const matches = (key: string) => { if (!tagSel.size) return true; const t = parseTags(key); return t.length ? t.some((x) => tagSel.has(x)) : tagSel.has("__none"); };
-  const topicAvail = (topicId: string) => Object.entries(counts[topicId] ?? {}).reduce((s, [k, v]) => s + (matches(k) ? v[idx] ?? 0 : 0), 0);
-  const available = useMemo(() => [...selected].reduce((s, t) => s + topicAvail(t), 0), [selected, tagSel, pool, counts]); // eslint-disable-line react-hooks/exhaustive-deps
+  const subjectOf = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of tree.subjects) for (const c of s.chapters) for (const t of c.topics) m[t.id] = s.id;
+    return m;
+  }, [tree]);
+  // Exams are offered only for the chapters picked above, grouped by subject, so one subject's
+  // papers never crowd out another's and a choice in one subject never filters the others.
+  const groups = useMemo(() => {
+    return tree.subjects.flatMap((s) => {
+      const tally = new Map<string, number>(); let none = 0;
+      for (const c of s.chapters) for (const tp of c.topics) {
+        if (!selected.has(tp.id)) continue;
+        for (const [k, v] of Object.entries(counts[tp.id] ?? {})) {
+          const t = parseTags(k), n = v[idx] ?? 0;
+          if (t.length) t.forEach((x) => tally.set(x, (tally.get(x) ?? 0) + n)); else none += n;
+        }
+      }
+      if (!tally.size) return [];
+      return [{ id: s.id, name: s.name, tags: sortTags([...tally.keys()]).map((t) => ({ t, n: tally.get(t)! })), none }];
+    });
+  }, [tree, selected, counts, idx]);
+  // Picks that no longer apply (their chapter was unticked) are ignored rather than silently filtering.
+  const active = useMemo(() => {
+    const ok = new Set<string>();
+    for (const g of groups) { g.tags.forEach(({ t }) => ok.add(`${g.id}::${t}`)); if (g.none) ok.add(`${g.id}::__none`); }
+    return new Set([...tagSel].filter((k) => ok.has(k)));
+  }, [groups, tagSel]);
+  const wantBySubject = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const k of active) { const i = k.indexOf("::"), sid = k.slice(0, i); const set = m.get(sid) ?? new Set<string>(); set.add(k.slice(i + 2)); m.set(sid, set); }
+    return m;
+  }, [active]);
+  const matches = (topicId: string, key: string) => {
+    const want = wantBySubject.get(subjectOf[topicId]);
+    if (!want) return true;
+    const t = parseTags(key);
+    return t.length ? t.some((x) => want.has(x)) : want.has("__none");
+  };
+  const topicAvail = (topicId: string) => Object.entries(counts[topicId] ?? {}).reduce((s, [k, v]) => s + (matches(topicId, k) ? v[idx] ?? 0 : 0), 0);
+  const clearSubject = (sid: string) => setTagSel((prev) => new Set([...prev].filter((k) => !k.startsWith(`${sid}::`))));
+  const available = useMemo(() => [...selected].reduce((s, t) => s + topicAvail(t), 0), [selected, wantBySubject, pool, counts]); // eslint-disable-line react-hooks/exhaustive-deps
   const effective = Math.max(0, Math.min(count, available, MAX));
 
   const toggleTopics = (ids: string[], on: boolean) => setSelected((prev) => { const n = new Set(prev); ids.forEach((id) => (on ? n.add(id) : n.delete(id))); return n; });
@@ -54,7 +87,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
     if (!mode) return;
     setError("");
     start(async () => {
-      const res = await createSession({ mode, topicIds: [...selected], count: effective, pool, tags: [...tagSel], randomize, timed, minutes });
+      const res = await createSession({ mode, topicIds: [...selected], count: effective, pool, tags: [...active], randomize, timed, minutes });
       if (res.error) setError(res.error); else router.push(`/session/${res.id}`);
     });
   }
@@ -126,17 +159,35 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
                   {POOLS.map((p) => <button key={p.id} onClick={() => setPool(p.id)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${pool === p.id ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>{p.label}</button>)}
                 </div>
               </div>
-              {(allTags.list.length > 0 || allTags.none) && (
-                <div>
-                  <h2 className={sectionTitle}>Exams and years</h2>
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setTagSel(new Set())} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${tagSel.size === 0 ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>All</button>
-                    {allTags.list.map((t) => <button key={t} onClick={() => toggleSet(tagSel, t, setTagSel)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${tagSel.has(t) ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>{t}</button>)}
-                    {allTags.none && <button onClick={() => toggleSet(tagSel, "__none", setTagSel)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${tagSel.has("__none") ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>No tag</button>}
+              <div data-testid="exam-filter">
+                <h2 className={sectionTitle}>Exams and years</h2>
+                {selected.size === 0 ? (
+                  <p className="text-sm text-muted">Choose chapters above, then narrow them to the exams their questions came from.</p>
+                ) : groups.length === 0 ? (
+                  <p className="text-sm text-muted">The chapters you chose have no exam tags yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {groups.map((g) => {
+                      const chip = (on: boolean) => `rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${on ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`;
+                      const none = !wantBySubject.has(g.id);
+                      return (
+                        <div key={g.id} data-testid={`exam-group-${g.name}`}>
+                          {groups.length > 1 && <p className="mb-2 text-sm font-semibold">{g.name}</p>}
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => clearSubject(g.id)} className={chip(none)}>All</button>
+                            {g.tags.map(({ t, n }) => {
+                              const k = `${g.id}::${t}`;
+                              return <button key={k} onClick={() => toggleSet(tagSel, k, setTagSel)} className={chip(active.has(k))}>{t} <span className="ml-1 opacity-60">{n}</span></button>;
+                            })}
+                            {g.none > 0 && <button onClick={() => toggleSet(tagSel, `${g.id}::__none`, setTagSel)} className={chip(active.has(`${g.id}::__none`))}>No tag <span className="ml-1 opacity-60">{g.none}</span></button>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <p className="text-xs text-muted">Pick one or more. Nothing picked means every exam{groups.length > 1 ? " in that subject" : ""}.</p>
                   </div>
-                  <p className="mt-2 text-xs text-muted">Pick one or more. Nothing picked means all questions.</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="card space-y-5">
