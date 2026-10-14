@@ -78,7 +78,7 @@ export async function importChapters(input: ImportChapter[], opts: { subject?: s
           if (add.length) { dup.tags = [...dup.tags, ...add]; await db.update(questions).set({ tags: dup.tags.join(", ") }).where(eq(questions.id, dup.id)); merged++; } else skipped++;
           continue;
         }
-        const [qr] = await db.insert(questions).values({ topicId: tp.id, questionText: q.text.trim(), explanation: q.explanation.trim(), tags: (Array.isArray(q.tags) ? q.tags.join(",") : q.tags ?? "").split(/[,،;]/).map((t) => t.trim()).filter(Boolean).join(", "), order: order++ }).returning();
+        const [qr] = await db.insert(questions).values({ topicId: tp.id, questionText: q.text.trim(), explanation: q.explanation.trim(), tags: parseTags(Array.isArray(q.tags) ? q.tags.join(",") : q.tags ?? "").join(", "), order: order++ }).returning();
         const correct = LABELS.indexOf(String(q.correct).toUpperCase());
         await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: qr.id, label: LABELS[i], text: String(text).trim(), isCorrect: i === correct })));
         seen.set(key, { id: qr.id, tags: parseTags(qr.tags) }); added++;
