@@ -61,7 +61,7 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
 
   const allowed = [...(await accessibleSubjectIds(user.id))];
   if (!allowed.length) return { error: "Subscribe to a subject first to create a session." };
-  let cands = await db.select({ id: questions.id, tags: questions.tags, subjectId: chapters.subjectId })
+  let cands = await db.select({ id: questions.id, tags: questions.tags, subjectId: chapters.subjectId, groupId: questions.groupId, groupOrder: questions.groupOrder })
     .from(questions).innerJoin(topics, eq(questions.topicId, topics.id)).innerJoin(chapters, eq(topics.chapterId, chapters.id))
     .where(and(inArray(questions.topicId, input.topicIds.slice(0, 500)), inArray(chapters.subjectId, allowed)))
     .orderBy(asc(chapters.order), asc(topics.order), asc(questions.order));
@@ -81,8 +81,22 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
   }
   if (!ids.length) return { error: "No questions match these choices. Try a different pool or more topics." };
 
-  if (input.randomize) shuffle(ids);
-  ids = ids.slice(0, count);
+  // Cases, EMQs and true/false blocks are kept whole: the blocks are shuffled, never the questions
+  // inside one, and a block is taken entire even when that overshoots the number asked for —
+  // better a couple of extra questions than half a case. A pool like "incorrect only" has already
+  // narrowed the list, so a block then holds just the questions that survived it.
+  const keep = new Set(ids), units: string[][] = [], seenGroup = new Set<string>();
+  for (const c of cands) {
+    if (!keep.has(c.id)) continue;
+    if (!c.groupId) { units.push([c.id]); continue; }
+    if (seenGroup.has(c.groupId)) continue;
+    seenGroup.add(c.groupId);
+    units.push(cands.filter((x) => x.groupId === c.groupId && keep.has(x.id)).sort((a, b) => a.groupOrder - b.groupOrder).map((x) => x.id));
+  }
+  if (input.randomize) shuffle(units);
+  const picked: string[] = [];
+  for (const u of units) { if (picked.length >= count) break; picked.push(...u); }
+  ids = picked;
   const id = await insertSession(user.id, input.mode, ids, { timed: input.timed, minutes, randomize: input.randomize, filters: { topicIds: input.topicIds, pool: input.pool, tags: (input.tags ?? []).slice(0, 200) } });
   return { id };
 }
@@ -98,8 +112,8 @@ export async function answerInSession(testId: string, questionId: string, choice
 
   await assertQuestionAccess(user.id, questionId);
   const choices = await db.select().from(answerChoices).where(eq(answerChoices.questionId, questionId));
-  const picked = choices.find((c) => c.id === choiceId), correct = choices.find((c) => c.isCorrect);
-  if (!picked || !correct) throw new Error("Invalid choice");
+  const picked = choices.find((c) => c.id === choiceId), correct = choices.filter((c) => c.isCorrect);
+  if (!picked || !correct.length) throw new Error("Invalid choice");
 
   // In an exam the student may change an answer until they finish, so keep only the latest choice.
   if (t.mode === "exam") await db.delete(userAnswers).where(and(eq(userAnswers.userId, user.id), eq(userAnswers.questionId, questionId), eq(userAnswers.testId, testId)));
@@ -108,7 +122,7 @@ export async function answerInSession(testId: string, questionId: string, choice
   if (t.mode === "exam") return null;
   const [q] = await db.select({ explanation: questions.explanation }).from(questions).where(eq(questions.id, questionId)).limit(1);
   const peers = (await peerStats([questionId])).get(questionId) ?? null;
-  return { choiceId, isCorrect: picked.isCorrect, correctChoiceId: correct.id, explanation: q.explanation, peers };
+  return { choiceId, isCorrect: picked.isCorrect, correctChoiceIds: correct.map((c) => c.id), explanation: q.explanation, peers };
 }
 
 export async function finishSession(testId: string) {

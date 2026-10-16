@@ -21,14 +21,15 @@ export async function submitAnswer(questionId: string, choiceId: string, timeSpe
   if (!q) throw new Error("Question not found");
   const choices = await db.select().from(answerChoices).where(eq(answerChoices.questionId, questionId));
   const picked = choices.find((c) => c.id === choiceId);
-  const correct = choices.find((c) => c.isCorrect);
-  if (!picked || !correct) throw new Error("Invalid choice");
+  // A question may accept more than one option, so every correct one is sent back.
+  const correct = choices.filter((c) => c.isCorrect);
+  if (!picked || !correct.length) throw new Error("Invalid choice");
   await db.insert(userAnswers).values({
     userId: user.id, questionId, choiceId, isCorrect: picked.isCorrect,
     timeSpentSec: Math.max(0, Math.min(3600, Math.round(timeSpentSec))),
   });
   const peers = (await peerStats([questionId])).get(questionId) ?? null;
-  return { choiceId, isCorrect: picked.isCorrect, correctChoiceId: correct.id, explanation: q.explanation, peers };
+  return { choiceId, isCorrect: picked.isCorrect, correctChoiceIds: correct.map((c) => c.id), explanation: q.explanation, peers };
 }
 
 export async function toggleBookmark(questionId: string): Promise<boolean> {

@@ -91,7 +91,7 @@ export async function importJson(f: FormData) {
     }
     const r = await importChapters(Array.isArray(data) ? (data as ImportChapter[]) : [data as ImportChapter], { subject: str(f, "subject").trim() || undefined, chapter: str(f, "chapter").trim() || undefined, topic: str(f, "topic").trim() || undefined });
     done();
-    redirect(`/admin/content?imported=${r.added}&skipped=${r.skipped}&merged=${r.merged}`);
+    redirect(`/admin/content?imported=${r.added}&skipped=${r.skipped}&merged=${r.merged}&groups=${r.groups}`);
   } catch (e) {
     if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
     const m = e instanceof Error ? e.message : "Import failed.";
