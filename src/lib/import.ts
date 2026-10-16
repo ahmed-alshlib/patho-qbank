@@ -151,9 +151,16 @@ export async function importChapters(
     let [ch] = await db.select().from(chapters).where(and(sql`lower(${chapters.name}) = ${c.chapter.trim().toLowerCase()}`, eq(chapters.subjectId, subj.id))).limit(1);
     if (!ch) [ch] = await db.insert(chapters).values({ subjectId: subj.id, name: c.chapter.trim(), description: c.description ?? "", order: c.chapterOrder ?? 0 }).returning();
 
-    for (const [ti, t] of c.topics!.entries()) {
+    for (const t of c.topics!) {
       let [tp] = await db.select().from(topics).where(and(sql`lower(${topics.name}) = ${t.name.trim().toLowerCase()}`, eq(topics.chapterId, ch.id))).limit(1);
-      if (!tp) [tp] = await db.insert(topics).values({ chapterId: ch.id, name: t.name.trim(), order: ti }).returning();
+      if (!tp) {
+        // A new topic goes after the ones already in the chapter. Giving it the file's own index
+        // would collide with an existing topic's order, and two topics sharing an order makes the
+        // chapter view fall back to question order, which interleaves their questions and tears
+        // a case or an EMQ apart.
+        const sibs = await db.select({ order: topics.order }).from(topics).where(eq(topics.chapterId, ch.id));
+        [tp] = await db.insert(topics).values({ chapterId: ch.id, name: t.name.trim(), order: sibs.length ? Math.max(...sibs.map((s) => s.order)) + 1 : 0 }).returning();
+      }
 
       const have = await db
         .select({ id: questions.id, text: questions.questionText, tags: questions.tags, order: questions.order, groupId: questions.groupId, groupOrder: questions.groupOrder })
