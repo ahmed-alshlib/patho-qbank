@@ -1,0 +1,116 @@
+[
+  {
+    "subject": "Pathology 1",
+    "chapter": "Cell Injury and Adaptation",
+    "topics": [
+      {
+        "name": "Adaptation",
+        "questions": [
+          {
+            "text": "An ordinary question still looks exactly like this.",
+            "choices": ["First", "Second", "Third"],
+            "correct": "A",
+            "explanation": "Nothing about standalone questions has changed.",
+            "tags": "Final 06/2025"
+          }
+        ],
+        "groups": [
+          {
+            "kind": "case",
+            "title": "COPD",
+            "body": "A 58-year-old man with a 30-year smoking history reports six months of progressive breathlessness and a daily productive cough. Spirometry: FEV1/FVC 0.58, with no improvement after a bronchodilator.",
+            "tags": "Final 06/2025",
+            "questions": [
+              {
+                "text": "Which cellular adaptation is most likely in this patient's bronchial epithelium?",
+                "choices": ["Squamous metaplasia", "Glandular hyperplasia", "Fatty change", "Coagulative necrosis"],
+                "correct": "A",
+                "explanation": "Chronic smoke injury replaces ciliated columnar epithelium with squamous epithelium."
+              },
+              {
+                "text": "The same patient now has recurrent chest infections. Which cell type would predominate in a bronchial biopsy?",
+                "choices": ["Neutrophils", "Lymphocytes and macrophages", "Eosinophils", "Mast cells"],
+                "correct": "B",
+                "explanation": "Chronic inflammation is dominated by lymphocytes and macrophages."
+              }
+            ]
+          },
+          {
+            "kind": "tf",
+            "title": "Cell injury",
+            "body": "Decide whether each statement is true or false.",
+            "tags": "Midterm 11/2025",
+            "questions": [
+              {
+                "text": "Apoptosis provokes an inflammatory response.",
+                "correct": "False",
+                "explanation": "Apoptosis is non-inflammatory; the membrane stays intact."
+              },
+              {
+                "text": "Hypoxia reduces oxidative phosphorylation before any structural change appears.",
+                "correct": "True",
+                "explanation": "Functional change precedes morphological change."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "subject": "Pathology 1",
+    "chapter": "Inflammation",
+    "topics": [
+      {
+        "name": "Parasitology EMQ",
+        "groups": [
+          {
+            "kind": "emq",
+            "title": "Parasitology",
+            "body": "Choose the most appropriate option (A to T) that best matches each item. An option may be used once, more than once, or not at all.",
+            "tags": "Final 06/2026",
+            "options": [
+              "Incubation period",
+              "Control of ticks",
+              "Leishmania vaccine",
+              "Schistosoma haematobium",
+              "Taenia solium",
+              "Pubic lice",
+              "Giardiasis & Entamoeba histolytica",
+              "Alveolar hydatid cyst",
+              "Isospora belli",
+              "Lymphatic filariasis",
+              "Infecting strain",
+              "Control of tsetse",
+              "Malaria vaccine",
+              "Schistosoma mansoni",
+              "Taenia saginata",
+              "Body lice",
+              "Balantidium coli & Isospora belli",
+              "Unilocular hydatid cyst",
+              "Cryptosporidium parvum",
+              "Loiasis"
+            ],
+            "questions": [
+              {
+                "text": "Risk factor for urinary bladder cancer.",
+                "correct": "D",
+                "explanation": "Schistosoma haematobium causes squamous cell carcinoma of the bladder."
+              },
+              {
+                "text": "Neuro-cysticercosis.",
+                "correct": "E",
+                "explanation": "Taenia solium larvae cause cysticercosis."
+              },
+              {
+                "text": "Parasitic causes of travellers' diarrhoea.",
+                "correct": "G,S",
+                "explanation": "Both Giardia/Entamoeba and Cryptosporidium cause it; either answer is accepted."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
