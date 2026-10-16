@@ -64,7 +64,7 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
   let cands = await db.select({ id: questions.id, tags: questions.tags, subjectId: chapters.subjectId, groupId: questions.groupId, groupOrder: questions.groupOrder })
     .from(questions).innerJoin(topics, eq(questions.topicId, topics.id)).innerJoin(chapters, eq(topics.chapterId, chapters.id))
     .where(and(inArray(questions.topicId, input.topicIds.slice(0, 500)), inArray(chapters.subjectId, allowed)))
-    .orderBy(asc(chapters.order), asc(topics.order), asc(questions.order));
+    .orderBy(asc(chapters.order), asc(chapters.name), asc(topics.order), asc(topics.name), asc(questions.order));
   // Empty tag choice = no filter. "__none" matches questions that have no tag.
   const pass = (want: Set<string>, tags: string) => { const t = parseTags(tags); return t.length ? t.some((x) => want.has(x)) : want.has("__none"); };
   if (scoped.size || wantAll.size) cands = cands.filter((c) => { const want = scoped.get(c.subjectId) ?? (wantAll.size ? wantAll : null); return want ? pass(want, c.tags) : true; });
