@@ -8,6 +8,7 @@ import { answerInSession, finishSession } from "@/app/actions-session";
 import type { Hl, Reveal, StudyQuestion } from "@/lib/questions";
 import { FontSizeControl, SessionProgress, useFontScale } from "@/components/FontSize";
 import HighlightedText from "@/components/HighlightedText";
+import { ChoiceGrid, GRID_FROM, GroupPanel } from "@/components/QuestionGroup";
 import { ProgressRing } from "@/components/ui";
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -27,6 +28,9 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   const [hls, setHls] = useState<Record<string, Hl[]>>(Object.fromEntries(questions.map((q) => [q.id, q.highlights])));
   // Highlights on the question text are temporary: never saved, cleared once the question is answered.
   const [tempHls, setTempHls] = useState<Record<string, Hl[]>>({});
+  // A case or option list is open on the first question of its block and folded after that,
+  // until the student opens it again.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const tempId = useRef(0);
   const [finishing, setFinishing] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -176,8 +180,8 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
           const state = n === i ? "ring-2 ring-brand ring-offset-2 ring-offset-bg " : "";
           const tone = r ? (r.isCorrect ? "bg-good text-white" : "bg-bad text-white") : "bg-raised text-muted";
           return (
-            <button key={x.id} onClick={() => go(n)} title={`Question ${n + 1}`}
-              className={`${state}${tone} grid h-8 min-w-8 place-items-center rounded-lg px-1 text-xs font-semibold transition hover:scale-110`}>{n + 1}</button>
+            <button key={x.id} onClick={() => go(n)} title={x.group ? `Question ${n + 1} — part of a ${x.group.kind === "case" ? "case" : x.group.kind === "emq" ? "EMQ" : "true/false block"}` : `Question ${n + 1}`}
+              className={`${state}${tone} ${x.group ? "border-b-2 border-brand/70 " : ""}grid h-8 min-w-8 place-items-center rounded-lg px-1 text-xs font-semibold transition hover:scale-110`}>{n + 1}</button>
           );
         })}
       </div>
@@ -199,6 +203,11 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
             <button onClick={() => { setReportOpen((o) => !o); setNoteOpen(false); }} aria-label="Report" title="Report a problem" className="btn-ghost !p-2"><Flag className="h-4 w-4" /></button>
           </div>
         </div>
+
+        {q.group && (
+          <GroupPanel g={q.group} open={openGroups[q.group.id] ?? q.group.index === 0}
+            onToggle={() => setOpenGroups((m) => ({ ...m, [q.group!.id]: !(m[q.group!.id] ?? q.group!.index === 0) }))} />
+        )}
 
         <div>
           <HighlightedText text={q.text} highlights={tempHls[q.id] ?? []}
@@ -224,8 +233,12 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
         )}
 
         <div className={`space-y-2.5 ${wrongFlash && reveal && !reveal.isCorrect ? "animate-shake" : ""}`}>
-          {q.choices.map((c, n) => {
-            const isRight = reveal?.correctChoiceId === c.id, isWrong = reveal && reveal.choiceId === c.id && !reveal.isCorrect, isSel = selected === c.id && !reveal;
+          {q.choices.length >= GRID_FROM ? (
+            <ChoiceGrid choices={q.choices} selectedId={reveal ? reveal.choiceId : selected}
+              correctIds={reveal ? reveal.correctChoiceIds : null} chosenId={reveal?.choiceId ?? null}
+              disabled={!!reveal} onPick={(id) => setSelected(id)} />
+          ) : q.choices.map((c, n) => {
+            const isRight = !!reveal?.correctChoiceIds.includes(c.id), isWrong = reveal && reveal.choiceId === c.id && !reveal.isCorrect, isSel = selected === c.id && !reveal;
             const cls = isRight ? "border-good bg-good/10" : isWrong ? "border-bad bg-bad/10" : isSel ? "border-brand bg-brand/10 shadow-glow" : reveal ? "border-line opacity-60" : "border-line hover:border-brand/50 hover:bg-raised";
             const badge = isRight ? "bg-good text-white" : isWrong ? "bg-bad text-white" : isSel ? "bg-brand text-white" : "bg-raised text-muted";
             return (
@@ -245,7 +258,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
           <div className={`animate-reveal overflow-hidden rounded-xl border p-4 ${reveal.isCorrect ? "border-good/40 bg-good/5" : "border-bad/40 bg-bad/5"}`}>
             <div className={`mb-2 flex items-center gap-2 font-semibold ${reveal.isCorrect ? "text-good" : "text-bad"}`}>
               {reveal.isCorrect ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
-              {reveal.isCorrect ? "Correct" : `Incorrect. The right answer is ${q.choices.find((c) => c.id === reveal.correctChoiceId)?.label}.`}
+              {reveal.isCorrect ? "Correct" : `Incorrect. The right answer is ${q.choices.filter((c) => reveal.correctChoiceIds.includes(c.id)).map((c) => c.label).join(" or ")}.`}
             </div>
             <HighlightedText text={reveal.explanation} highlights={(hls[q.id] ?? []).filter((h) => h.target === "explanation")}
               onAdd={(s, e) => onAddHl("explanation", s, e)} onRemove={onRemoveHl} className="qexp leading-relaxed" />

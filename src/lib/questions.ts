@@ -1,15 +1,24 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { db, subjects, chapters, topics, questions, answerChoices, bookmarks, notes, highlights, userAnswers } from "@/db";
+import { db, subjects, chapters, topics, questions, questionGroups, answerChoices, bookmarks, notes, highlights, userAnswers } from "@/db";
 import { latestCte } from "@/lib/stats";
 import { accessibleSubjectIds } from "@/lib/access";
 import { parseTags } from "@/lib/tags";
 import { peerStats, type Peer } from "@/lib/peers";
 
-export type Reveal = { choiceId: string; isCorrect: boolean; correctChoiceId: string; explanation: string; peers?: Peer | null };
+/** A paper may accept more than one option ("G,S"), so the right answer is a list. */
+export type Reveal = { choiceId: string; isCorrect: boolean; correctChoiceIds: string[]; explanation: string; peers?: Peer | null };
 export type Hl = { id: string; target: "question" | "explanation"; start: number; end: number };
+/** The block a question belongs to, with its position among the questions of that block in THIS session. */
+export type QGroup = {
+  id: string; kind: "case" | "emq" | "tf"; title: string; body: string;
+  index: number; total: number;
+  /** The shared option list, for an EMQ. Empty for a case, where each question has its own choices. */
+  options: { label: string; text: string }[];
+};
 export type StudyQuestion = {
   id: string; subject: string; chapter: string; topic: string; text: string; tags: string[];
   choices: { id: string; label: string; text: string }[];
+  group: QGroup | null;
   previous: Reveal | null;
   /** Exam sessions: the choice picked so far (no correctness is ever sent). */
   selected: string | null;
@@ -55,14 +64,31 @@ export async function loadStudyQuestions(userId: string, opts: { chapterId?: str
   const bmSet = new Set(bms.map((b) => b.id));
   const peers = opts.exam ? new Map<string, Peer>() : await peerStats(ids.filter((id) => latest.has(id)));
 
+  // Groups: a question's position is counted among the questions of its group that are in THIS
+  // session, so "2 of 5" stays true in an incorrect-only session holding only part of a case.
+  const gids = [...new Set(rows.map((r) => r.q.groupId).filter(Boolean))] as string[];
+  const gRows = gids.length ? await db.select().from(questionGroups).where(inArray(questionGroups.id, gids)) : [];
+  const gById = new Map(gRows.map((g) => [g.id, g]));
+  const gMembers = new Map<string, string[]>();
+  for (const r of rows) if (r.q.groupId) gMembers.set(r.q.groupId, [...(gMembers.get(r.q.groupId) ?? []), r.q.id]);
+
   return rows.map((r) => {
     const cs = choices.filter((c) => c.questionId === r.q.id);
     const prev = latest.get(r.q.id);
+    const g = r.q.groupId ? gById.get(r.q.groupId) : null;
+    const mates = r.q.groupId ? gMembers.get(r.q.groupId) ?? [] : [];
     return {
       id: r.q.id, subject: r.subject, chapter: r.chapter, topic: r.topic, text: r.q.questionText, tags: parseTags(r.q.tags),
       choices: cs.map((c) => ({ id: c.id, label: c.label, text: c.text })),
+      group: g ? {
+        id: g.id, kind: g.kind as QGroup["kind"], title: g.title, body: g.body,
+        index: Math.max(0, mates.indexOf(r.q.id)), total: mates.length,
+        // Only an EMQ needs its list spelled out above: a case and a true/false block show their
+        // choices under the question like any other.
+        options: g.kind === "emq" ? cs.map((c) => ({ label: c.label, text: c.text })) : [],
+      } : null,
       // Correct answers/explanations are only sent for questions the student has already answered (never in exams).
-      previous: prev && !opts.exam ? { choiceId: prev.choiceId!, isCorrect: prev.isCorrect, correctChoiceId: cs.find((c) => c.isCorrect)!.id, explanation: r.q.explanation, peers: peers.get(r.q.id) ?? null } : null,
+      previous: prev && !opts.exam ? { choiceId: prev.choiceId!, isCorrect: prev.isCorrect, correctChoiceIds: cs.filter((c) => c.isCorrect).map((c) => c.id), explanation: r.q.explanation, peers: peers.get(r.q.id) ?? null } : null,
       selected: opts.exam ? prev?.choiceId ?? null : null,
       bookmarked: bmSet.has(r.q.id),
       note: nts.find((n) => n.questionId === r.q.id)?.body ?? "",

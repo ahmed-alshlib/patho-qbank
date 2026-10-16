@@ -61,6 +61,20 @@ export const topics = pgTable("topics", {
   order: integer("order").notNull().default(0),
 });
 
+// A block of questions that share one piece of text above them: a clinical case, an EMQ option
+// list, or a true/false stem. Questions outside a group behave exactly as before.
+export const questionGroups = pgTable("question_groups", {
+  id: id(),
+  topicId: text("topic_id").notNull().references(() => topics.id, { onDelete: "cascade" }),
+  /** case | emq | tf */
+  kind: text("kind").notNull(),
+  /** Short heading: the EMQ theme, or a name for the case. */
+  title: text("title").notNull().default(""),
+  /** The shared text: the scenario for a case, the lead-in for an EMQ, the stem for true/false. */
+  body: text("body").notNull().default(""),
+  order: integer("order").notNull().default(0),
+}, (t) => [index("qg_topic_idx").on(t.topicId)]);
+
 export const questions = pgTable("questions", {
   id: id(),
   topicId: text("topic_id").notNull().references(() => topics.id, { onDelete: "cascade" }),
@@ -69,7 +83,11 @@ export const questions = pgTable("questions", {
   difficulty: text("difficulty").notNull().default("medium"), // easy | medium | hard
   tags: text("tags").notNull().default(""), // comma separated
   order: integer("order").notNull().default(0),
-});
+  /** null = an ordinary standalone question. */
+  groupId: text("group_id").references(() => questionGroups.id, { onDelete: "cascade" }),
+  /** Position inside its group; the order is fixed and never shuffled. */
+  groupOrder: integer("group_order").notNull().default(0),
+}, (t) => [index("questions_group_idx").on(t.groupId)]);
 
 export const answerChoices = pgTable("answer_choices", {
   id: id(),

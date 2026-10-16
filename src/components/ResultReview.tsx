@@ -37,6 +37,12 @@ export default function ResultReview({ items }: { items: ResultItem[] }) {
             </button>
             {isOpen && (
               <div className="space-y-2 border-t border-line p-4">
+                {i.group && (i.group.body || i.group.title) && (
+                  <div className="rounded-xl border border-brand/30 bg-brand/5 p-3 text-sm">
+                    <div className="eyebrow mb-1 !text-brand">{i.group.kind === "case" ? "Clinical case" : i.group.kind === "emq" ? "EMQ" : "Statement"}{i.group.title ? ` · ${i.group.title}` : ""}</div>
+                    {i.group.body && <p className="whitespace-pre-line leading-relaxed">{i.group.body}</p>}
+                  </div>
+                )}
                 {i.choices.map((c) => {
                   const chosen = c.id === i.chosenId;
                   const cls = c.isCorrect ? "border-good/50 bg-good/10" : chosen ? "border-bad/50 bg-bad/10" : "border-line";

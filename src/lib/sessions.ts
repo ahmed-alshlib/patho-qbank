@@ -1,7 +1,7 @@
 import { parseTags } from "@/lib/tags";
 import { peerStats } from "@/lib/peers";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { db, subjects, chapters, topics, questions, answerChoices, tests, testQuestions } from "@/db";
+import { db, subjects, chapters, topics, questions, questionGroups, answerChoices, tests, testQuestions } from "@/db";
 import { latestCte, TZ } from "@/lib/stats";
 import { latestForQuestions } from "@/lib/questions";
 import { accessibleSubjectIds } from "@/lib/access";
@@ -67,6 +67,8 @@ export type ResultItem = {
   choices: { id: string; label: string; text: string; isCorrect: boolean }[];
   chosenId: string | null; status: "correct" | "incorrect" | "unanswered";
   peers: { pct: number; n: number } | null;
+  /** The case, EMQ or true/false block this question came from, so the review shows it in context. */
+  group: { kind: string; title: string; body: string } | null;
 };
 
 export async function getResults(userId: string, testId: string) {
@@ -84,15 +86,21 @@ export async function getResults(userId: string, testId: string) {
   const choices = ids.length ? await db.select().from(answerChoices).where(inArray(answerChoices.questionId, ids)).orderBy(asc(answerChoices.label)) : [];
   const latest = await latestForQuestions(userId, ids, testId);
 
+  const gids = [...new Set(r.map((x) => x.q.groupId).filter(Boolean))] as string[];
+  const gRows = gids.length ? await db.select().from(questionGroups).where(inArray(questionGroups.id, gids)) : [];
+  const gById = new Map(gRows.map((g) => [g.id, g]));
+
   const peers = await peerStats(r.map((x) => x.q.id));
   const items: ResultItem[] = r.map((x) => {
     const a = latest.get(x.q.id);
+    const g = x.q.groupId ? gById.get(x.q.groupId) : null;
     return {
       id: x.q.id, position: x.position, text: x.q.questionText, explanation: x.q.explanation, tags: parseTags(x.q.tags),
       subjectId: x.subjectId, subject: x.subject, chapterId: x.chapterId, chapter: x.chapter, topicId: x.topicId, topic: x.topic,
       choices: choices.filter((c) => c.questionId === x.q.id).map((c) => ({ id: c.id, label: c.label, text: c.text, isCorrect: c.isCorrect })),
       chosenId: a?.choiceId ?? null, status: !a ? "unanswered" : a.isCorrect ? "correct" : "incorrect",
       peers: peers.get(x.q.id) ?? null,
+      group: g ? { kind: g.kind, title: g.title, body: g.body } : null,
     };
   });
   return { test, items };

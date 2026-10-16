@@ -7,6 +7,7 @@ import { toggleBookmark } from "@/app/actions-study";
 import type { Hl, StudyQuestion } from "@/lib/questions";
 import { FontSizeControl, SessionProgress, useFontScale } from "@/components/FontSize";
 import HighlightedText from "@/components/HighlightedText";
+import { ChoiceGrid, GRID_FROM, GroupPanel } from "@/components/QuestionGroup";
 
 const clock = (s: number) => `${Math.floor(s / 3600) ? Math.floor(s / 3600) + ":" : ""}${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
@@ -16,6 +17,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
   const [i, setI] = useState(startAt);
   const [answers, setAnswers] = useState<Record<string, string>>(Object.fromEntries(questions.filter((q) => q.selected).map((q) => [q.id, q.selected!])));
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [marks, setMarks] = useState<Record<string, Hl[]>>({});
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>(Object.fromEntries(questions.map((q) => [q.id, q.bookmarked])));
   const [left, setLeft] = useState<number | null>(remainingSec);
@@ -87,7 +89,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
         {questions.map((x, n) => {
           const tone = answers[x.id] ? "bg-brand text-white" : "bg-raised text-muted";
           return (
-            <button key={x.id} onClick={() => go(n)} title={`Question ${n + 1}`} className={`relative grid h-8 min-w-8 place-items-center rounded-lg px-1 text-xs font-semibold transition hover:scale-110 ${tone} ${n === i ? "ring-2 ring-brand ring-offset-2 ring-offset-bg" : ""}`}>
+            <button key={x.id} onClick={() => go(n)} title={x.group ? `Question ${n + 1} — part of a block` : `Question ${n + 1}`} className={`relative grid h-8 min-w-8 place-items-center rounded-lg px-1 text-xs font-semibold transition hover:scale-110 ${tone} ${x.group ? "border-b-2 border-brand/70" : ""} ${n === i ? "ring-2 ring-brand ring-offset-2 ring-offset-bg" : ""}`}>
               {n + 1}{flagged.has(x.id) && <Flag className="absolute -right-1 -top-1 h-3 w-3 fill-warn text-warn" />}
             </button>
           );
@@ -109,6 +111,11 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
           </div>
         </div>
 
+        {q.group && (
+          <GroupPanel g={q.group} open={openGroups[q.group.id] ?? q.group.index === 0}
+            onToggle={() => setOpenGroups((m) => ({ ...m, [q.group!.id]: !(m[q.group!.id] ?? q.group!.index === 0) }))} />
+        )}
+
         <div>
           <HighlightedText text={q.text} highlights={marks[q.id] ?? []} className="qtext leading-relaxed"
             onAdd={(s, e) => setMarks((m) => ({ ...m, [q.id]: [...(m[q.id] ?? []), { id: `t-${++tempId.current}`, target: "question", start: s, end: e }] }))}
@@ -117,7 +124,9 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
         </div>
 
         <div className="space-y-2.5">
-          {q.choices.map((c, n) => {
+          {q.choices.length >= GRID_FROM ? (
+            <ChoiceGrid choices={q.choices} selectedId={answers[q.id] ?? null} onPick={choose} />
+          ) : q.choices.map((c, n) => {
             const on = answers[q.id] === c.id;
             return (
               <button key={c.id} onClick={() => choose(c.id)} className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition duration-200 ${on ? "border-brand bg-brand/10 shadow-glow" : "border-line hover:border-brand/50 hover:bg-raised"}`}>
