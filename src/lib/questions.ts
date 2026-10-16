@@ -44,7 +44,22 @@ export async function loadStudyQuestions(userId: string, opts: { chapterId?: str
     .innerJoin(subjects, eq(chapters.subjectId, subjects.id));
 
   let rows;
-  if (opts.chapterId) rows = await base.where(eq(topics.chapterId, opts.chapterId)).orderBy(asc(topics.order), asc(questions.order));
+  // The topic name breaks a tie on order: without it two topics sharing an order collapse into
+  // one sequence by question order, which splits a case or an EMQ across the whole chapter.
+  if (opts.chapterId) {
+    rows = await base.where(eq(topics.chapterId, opts.chapterId)).orderBy(asc(topics.order), asc(topics.name), asc(questions.order));
+    // A block's questions are shown together wherever its first question falls, whatever their
+    // stored order — questions added to a block by a later import would otherwise sit apart.
+    const done = new Set<string>(), ordered: typeof rows = [];
+    for (const r of rows) {
+      const gid = r.q.groupId;
+      if (!gid) { ordered.push(r); continue; }
+      if (done.has(gid)) continue;
+      done.add(gid);
+      ordered.push(...rows.filter((x) => x.q.groupId === gid).sort((a, b) => a.q.groupOrder - b.q.groupOrder));
+    }
+    rows = ordered;
+  }
   else if (opts.ids?.length) {
     const found = await base.where(inArray(questions.id, opts.ids));
     const pos = new Map(opts.ids.map((id, i) => [id, i]));
