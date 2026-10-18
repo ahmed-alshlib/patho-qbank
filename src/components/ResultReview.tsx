@@ -54,7 +54,7 @@ export default function ResultReview({ items }: { items: ResultItem[] }) {
                     </div>
                   );
                 })}
-                <div className="rounded-xl bg-raised p-3 text-sm leading-relaxed"><div className="eyebrow mb-1">Explanation</div>{i.explanation}{i.peers && <div className="mt-3 border-t border-line pt-2 text-xs text-muted"><b className="text-ink">{i.peers.pct}%</b> of students got this right on their first try ({i.peers.n} students)</div>}</div>
+                <div className="rounded-xl bg-raised p-3 text-sm leading-relaxed"><div className="eyebrow mb-1">Explanation</div><span className="whitespace-pre-line">{i.explanation}</span>{i.peers && <div className="mt-3 border-t border-line pt-2 text-xs text-muted"><b className="text-ink">{i.peers.pct}%</b> of students got this right on their first try ({i.peers.n} students)</div>}</div>
               </div>
             )}
           </div>
