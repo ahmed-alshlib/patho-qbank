@@ -82,4 +82,4 @@
 .qtext { font-size: calc(1.0625rem * var(--qs, 1)); }
 @media (min-width: 640px) { .qtext { font-size: calc(1.125rem * var(--qs, 1)); } }
 .qchoice { font-size: calc(.9375rem * var(--qs, 1)); }
-.qexp { font-size: calc(.875rem * var(--qs, 1)); }
+.qexp { font-size: calc(.875rem * var(--qs, 1)); white-space: pre-line; }
