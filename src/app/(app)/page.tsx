@@ -15,15 +15,21 @@ export default async function Dashboard() {
   const user = (await requireUser());
   const o = await getOverview(user.id, user.dailyGoal);
   const counts = await getCounts(user.id);
-  const chapters = await getChapterStats(user.id);
+  const allowed = await accessibleSubjectIds(user.id);
+  const chapters = (await getChapterStats(user.id)).filter((c) => allowed.has(c.subjectId));
   const totalQ = chapters.reduce((s, c) => s + c.total, 0);
+  const done = chapters.reduce((s, c) => s + c.completed, 0);
+  const right = chapters.reduce((s, c) => s + c.correct, 0);
+  const wrong = done - right;
+  const acc = done ? Math.round((right / done) * 100) : null;
+  counts.incorrect = wrong;
   const recent = chapters.filter((c) => c.lastAnsweredAt).sort((a, b) => b.lastAnsweredAt! - a.lastAnsweredAt!).slice(0, 3);
   const weak = chapters.filter((c) => c.completed >= 1 && c.accuracy !== null).sort((a, b) => a.accuracy! - b.accuracy!).slice(0, 3);
   const next = recent.find((c) => c.completed < c.total) ?? chapters.find((c) => c.completed < c.total) ?? chapters[0];
   const open = (await listSessions(user.id, 5)).filter((x) => !x.finishedAt);
   const next2 = studyNext(await getTopicInsights(user.id));
-  const hasAccess = (await accessibleSubjectIds(user.id)).size > 0;
-  const donePct = pct(o.completed, totalQ);
+  const hasAccess = allowed.size > 0;
+  const donePct = pct(done, totalQ);
 
   return (
     <div className="space-y-6">
@@ -38,12 +44,12 @@ export default async function Dashboard() {
           <ProgressRing value={donePct} size={132} stroke={11} sub="complete" />
           <div className="relative flex-1 text-center sm:text-left">
             <p className="eyebrow">Your progress</p>
-            <p className="mt-1 font-display text-2xl font-semibold">{o.completed} of {totalQ} questions completed</p>
-            <p className="mt-1 text-sm text-muted">{o.accuracy === null ? "Answer your first question to start tracking accuracy." : `${o.accuracy}% accuracy so far. ${o.incorrect ? `${o.incorrect} to review.` : "No mistakes to review."}`}</p>
+            <p className="mt-1 font-display text-2xl font-semibold">{done} of {totalQ} questions completed</p>
+            <p className="mt-1 text-sm text-muted">{acc === null ? "Answer your first question to start tracking accuracy." : `${acc}% accuracy so far. ${wrong ? `${wrong} to review.` : "No mistakes to review."}`}</p>
           </div>
           {next && (
             <Link href={`/study/${next.id}`} className="btn relative !px-5 !py-3">
-              {o.completed ? "Continue" : "Start"}: {next.name.length > 22 ? next.name.slice(0, 22) + "…" : next.name}<ArrowRight className="h-4 w-4" />
+              {done ? "Continue" : "Start"}: {next.name.length > 22 ? next.name.slice(0, 22) + "…" : next.name}<ArrowRight className="h-4 w-4" />
             </Link>
           )}
         </section>
@@ -103,7 +109,7 @@ export default async function Dashboard() {
         </section>
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Accuracy" value={o.accuracy ?? "–"} suffix={o.accuracy === null ? "" : "%"} sub={`${o.correct} correct`} icon={<Target className="h-4 w-4" />} tone="good" />
+          <Stat label="Accuracy" value={acc ?? "–"} suffix={acc === null ? "" : "%"} sub={`${right} correct`} icon={<Target className="h-4 w-4" />} tone="good" />
           <Stat label="Today" value={o.answeredToday} sub="questions answered" icon={<Zap className="h-4 w-4" />} tone="brand" />
           <Stat label="Goal streak" value={o.streak} sub={o.streak === 1 ? "day in a row" : "days in a row"} icon={<Flame className="h-4 w-4" />} tone="warn" />
           <Stat label="Avg time" value={o.avgTime} suffix="s" sub="per question" icon={<Clock className="h-4 w-4" />} tone="brand" />
