@@ -2,7 +2,12 @@ import "@fontsource-variable/inter";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 
-export const metadata: Metadata = { title: "Rakeez", description: "Rakeez – question bank for medical students" };
+export const metadata: Metadata = {
+  title: "Rakeez", description: "Rakeez – question bank for medical students",
+  applicationName: "Rakeez",
+  // iPhone: open full-screen from the home screen with the right name and status bar.
+  appleWebApp: { capable: true, title: "Rakeez", statusBarStyle: "black" },
+};
 export const viewport: Viewport = { themeColor: "#04160A" };
 
 // Runs before first paint so there is no light/dark flash.

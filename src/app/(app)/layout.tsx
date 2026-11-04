@@ -5,10 +5,11 @@ import { getUser } from "@/lib/auth";
 import { getCounts } from "@/lib/stats";
 import { getExpiryNotices } from "@/lib/access";
 import { logout } from "../actions-auth";
-import NavLinks from "@/components/NavLinks";
+import NavLinks, { HideInSession } from "@/components/NavLinks";
 import ThemeToggle from "@/components/ThemeToggle";
 import MobileMenu from "@/components/MobileMenu";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
+import InstallPrompt from "@/components/InstallPrompt";
 import Logo from "@/components/Logo";
 import { getLiveAnnouncements } from "@/lib/announcements";
 
@@ -44,13 +45,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-[rgb(var(--glass)/.7)] px-4 py-3 backdrop-blur-xl lg:hidden">
-        <Brand />
-        <div className="flex gap-2"><MobileMenu badges={badges} /><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
-      </header>
+      <HideInSession>
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-[rgb(var(--glass)/.7)] px-4 py-3 backdrop-blur-xl lg:hidden">
+          <Brand />
+          <div className="flex gap-2"><MobileMenu badges={badges} /><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
+        </header>
+      </HideInSession>
 
-      <main className="min-w-0 flex-1 px-4 py-6 pb-28 lg:px-10 lg:py-10"><div className="mx-auto max-w-5xl">
+      <main className="min-w-0 flex-1 px-4 py-5 pb-32 lg:px-10 lg:py-10 lg:pb-10"><div className="mx-auto max-w-5xl">
         <AnnouncementBanner items={live} />
+        <InstallPrompt />
         {notices.map((n) => (
           <Link key={n.subjectId} href="/plans" data-testid="expiry-banner" className={`card mb-4 flex items-center gap-3 !p-4 text-sm ${n.kind === "ended" ? "!border-bad/40" : "!border-warn/40"}`}>
             <Clock className={`h-4 w-4 shrink-0 ${n.kind === "ended" ? "text-bad" : "text-warn"}`} />
@@ -60,7 +64,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ))}
         {children}</div></main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-[rgb(var(--glass)/.82)] backdrop-blur-xl lg:hidden"><NavLinks variant="bottom" badges={badges} /></nav>
+      <HideInSession>
+        <nav aria-label="Main" className="fixed inset-x-4 bottom-[max(env(safe-area-inset-bottom),16px)] z-30 mx-auto flex h-[68px] max-w-md items-center gap-1 rounded-[34px] border border-ink/10 bg-[rgb(var(--glass)/.55)] p-1.5 shadow-[0_18px_40px_rgb(0_0_0/.28),inset_0_1px_0_rgb(255_255_255/.12)] backdrop-blur-2xl backdrop-saturate-150 lg:hidden">
+          <NavLinks variant="bottom" badges={badges} />
+        </nav>
+      </HideInSession>
     </div>
   );
 }
