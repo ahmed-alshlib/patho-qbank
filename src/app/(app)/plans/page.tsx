@@ -50,7 +50,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
       {sp.couponError && !subs.some((x) => x.id === sp.couponFor) && <div className="card !border-bad/40 text-sm text-bad" role="alert">{sp.couponError}</div>}
       {sp.need && <div className="card !border-warn/40 flex items-center gap-3 text-sm"><Lock className="h-4 w-4 text-warn" />Subscribe to that subject to open its questions.</div>}
 
-      <div className="stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="stagger grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {subs.map((s) => {
           const { kind, s: sub } = stateOf(s.id);
           return (

@@ -57,7 +57,7 @@ export default async function Dashboard() {
         </Link>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         {(resume || next) && (
           <section className="relative overflow-hidden rounded-[26px] border border-brand/30 bg-gradient-to-br from-brand/25 via-brand/10 to-transparent p-5 shadow-lift sm:p-6">
             <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brand/20 blur-3xl" />
@@ -169,7 +169,7 @@ export default async function Dashboard() {
         <ActivityChart data={o.daily} />
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <section className="card space-y-1">
           <h2 className="mb-2 text-lg font-semibold">Recently studied</h2>
           {recent.length === 0 && <p className="text-sm text-muted">Nothing yet. Pick a chapter to begin.</p>}

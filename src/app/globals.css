@@ -31,6 +31,8 @@
 
 @layer base {
   html { color-scheme: light dark; }
+  /* Nothing may push the page sideways on a phone (keeps the floating bar and header fixed in place). */
+  html, body { overflow-x: clip; max-width: 100%; }
   body { @apply bg-bg font-sans text-ink antialiased; font-feature-settings: "cv11", "ss03"; font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
   body {
     background-image: radial-gradient(54rem 28rem at 88% -8%, rgb(var(--brand) / .08), transparent 62%),

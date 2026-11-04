@@ -20,7 +20,7 @@ export default async function Summaries() {
             <h2 className="flex items-center gap-2 text-2xl font-semibold">{g.subject}{!g.open && <Lock className="h-5 w-5 text-muted" />}</h2>
             {!g.open && <Link href={`/plans?need=${g.subjectId}`} className="btn !py-2 text-xs">Subscribe</Link>}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {g.chapters.map((c) => (
               <div key={c.id} className="card space-y-2">
                 <h3 className="font-display text-lg font-semibold">{c.name}</h3>

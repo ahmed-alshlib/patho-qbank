@@ -92,7 +92,7 @@ export default async function Results({ params }: { params: Promise<{ testId: st
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {[["By chapter", byChapter], ["By topic", byTopic]].map(([title, list]) => (
             <div key={title as string} className="card">
               <h2 className="font-display text-lg font-semibold">{title as string}</h2>

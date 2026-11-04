@@ -42,7 +42,7 @@ export default async function Subjects() {
           <div className="relative overflow-hidden rounded-[26px] border border-brand/30 bg-gradient-to-br from-brand/20 via-brand/5 to-transparent p-5 shadow-soft">
             <div className="flex items-center gap-4">
               <ProgressRing value={pct(s.done, s.total)} size={78} stroke={8} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h2 className="text-xl font-bold">{s.name}</h2>
                 <p className="mt-0.5 text-sm text-muted">{s.total} questions · {s.chapters.length} chapters</p>
                 <p className="text-sm text-muted">{s.acc === null ? "Not started yet" : `${s.acc}% accuracy`}{s.wrong ? ` · ${s.wrong} to review` : ""}</p>
@@ -55,12 +55,12 @@ export default async function Subjects() {
           </div>
 
           <p className="eyebrow px-1 pt-2">Chapters</p>
-          <div className="grid gap-2.5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             {s.chapters.map((c) => (
               <Link key={c.id} href={`/study/${c.id}`} className="card card-hover group flex items-center gap-3 !rounded-[20px] !p-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="truncate text-[15px] font-semibold">{c.name}</span>
+                    <span className="min-w-0 truncate text-[15px] font-semibold">{c.name}</span>
                     <span className="shrink-0 text-xs font-semibold tabular-nums text-muted">{c.completed}/{c.total}</span>
                   </div>
                   <Bar value={pct(c.completed, c.total)} className="mt-2.5 !h-1.5" />
