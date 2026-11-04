@@ -1,19 +1,20 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CreditCard, BarChart3, BookOpen, CircleX, FileText, History, LayoutDashboard, PlusCircle, Star, StickyNote } from "lucide-react";
+import type { ReactNode } from "react";
+import { CreditCard, BarChart3, BookOpen, CircleX, FileText, History, House, LayoutDashboard, Plus, PlusCircle, RotateCcw, Star, StickyNote } from "lucide-react";
 
 type Item = { href: string; label: string; icon: typeof History; bottom?: boolean; group?: "review" };
 export const NAV_ITEMS: Item[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, bottom: true },
   { href: "/subjects", label: "Subjects", icon: BookOpen, bottom: true },
   { href: "/session/new", label: "New session", icon: PlusCircle, bottom: true },
-  { href: "/history", label: "History", icon: History, bottom: true },
+  { href: "/history", label: "History", icon: History },
   { href: "/summaries", label: "Summaries", icon: FileText },
   { href: "/progress", label: "Progress", icon: BarChart3, bottom: true },
   { href: "/plans", label: "Subscriptions", icon: CreditCard },
   { href: "/bookmarks", label: "Bookmarks", icon: Star, group: "review" },
-  { href: "/incorrect", label: "Incorrect", icon: CircleX, group: "review" },
+  { href: "/incorrect", label: "Incorrect", icon: CircleX, group: "review", bottom: true },
   { href: "/notes", label: "Notes & Highlights", icon: StickyNote, group: "review" },
 ];
 
@@ -28,24 +29,36 @@ export function useActive() {
 
 export default function NavLinks({ variant, badges }: { variant: "side" | "bottom"; badges?: Record<string, number> }) {
   const active = useActive();
-  if (variant === "bottom")
+  if (variant === "bottom") {
+    // Floating glass bar (phones and tablets): icons only, the current page sits in a lighter pill.
+    const tabs: { href: string; label: string; icon: typeof History; fill?: boolean }[] = [
+      { href: "/", label: "Home", icon: House, fill: true },
+      { href: "/subjects", label: "Subjects", icon: BookOpen },
+      { href: "/session/new", label: "New session", icon: Plus },
+      { href: "/incorrect", label: "Review mistakes", icon: RotateCcw },
+      { href: "/progress", label: "Progress", icon: BarChart3 },
+    ];
     return (
       <>
-        {NAV_ITEMS.filter((i) => i.bottom).map(({ href, label, icon: Icon }) =>
-          href === "/session/new" ? (
-            <Link key={href} href={href} aria-label={label} data-testid="bottom-new-session" className="relative grid flex-1 place-items-center">
-              <span className={`btn -mt-6 grid h-14 w-14 place-items-center !rounded-full !p-0 ring-4 ring-[rgb(var(--bg))] ${active(href) ? "shadow-glow" : ""}`}><Icon className="h-6 w-6" /></span>
+        {tabs.map(({ href, label, icon: Icon, fill }) => {
+          const on = active(href);
+          if (href === "/session/new")
+            return (
+              <Link key={href} href={href} aria-label={label} data-testid="bottom-new-session" className="grid h-14 flex-1 place-items-center">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-brand text-white shadow-[0_6px_18px_rgb(var(--brand)/.45)] dark:text-[#02200d]"><Icon className="h-6 w-6" strokeWidth={2.6} /></span>
+              </Link>
+            );
+          return (
+            <Link key={href} href={href} aria-label={label} aria-current={on ? "page" : undefined} data-active={on}
+              className="relative grid h-14 flex-1 place-items-center rounded-full text-ink/75 transition data-[active=true]:bg-ink/10 data-[active=true]:text-ink">
+              <Icon className="h-6 w-6" strokeWidth={on ? 2.4 : 2} {...(on && fill ? { fill: "currentColor" } : {})} />
+              {!!badges?.[href] && <span className="absolute right-[calc(50%-15px)] top-3 h-2.5 w-2.5 rounded-full bg-bad ring-2 ring-[rgb(var(--surface))]" />}
             </Link>
-          ) : (
-            <Link key={href} href={href} aria-label={label} data-active={active(href)}
-              className="relative grid flex-1 place-items-center py-3 text-muted transition data-[active=true]:text-brand">
-              <Icon className="h-5 w-5" />
-              {active(href) && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-brand" />}
-              {!!badges?.[href] && <span className="absolute right-[22%] top-2 h-2 w-2 rounded-full bg-bad" />}
-            </Link>
-          ))}
+          );
+        })}
       </>
     );
+  }
   const link = ({ href, label, icon: Icon }: Item) => (
     <Link key={href} href={href} data-active={active(href)} className="nav-link">
       <Icon className="h-[18px] w-[18px]" />{label}
@@ -59,4 +72,11 @@ export default function NavLinks({ variant, badges }: { variant: "side" | "botto
       {NAV_ITEMS.filter((i) => i.group === "review").map(link)}
     </>
   );
+}
+
+/** Session screens (a question in progress) take the whole phone screen: no app header or tab bar. */
+export function HideInSession({ children }: { children: ReactNode }) {
+  const path = usePathname();
+  const inSession = path.startsWith("/study/") || path.startsWith("/practice/") || (path.startsWith("/session/") && path !== "/session/new");
+  return inSession ? null : <>{children}</>;
 }

@@ -21,9 +21,9 @@ function Box({ state }: { state: "none" | "some" | "all" }) {
   );
 }
 
-export default function NewSessionForm({ tree, counts, initialTopics = [] }: { tree: Tree; counts: Counts; initialTopics?: string[] }) {
+export default function NewSessionForm({ tree, counts, initialTopics = [], initialMode = null }: { tree: Tree; counts: Counts; initialTopics?: string[]; initialMode?: "study" | "exam" | null }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"study" | "exam" | null>(null);
+  const [mode, setMode] = useState<"study" | "exam" | null>(initialMode);
   const [selected, setSelected] = useState<Set<string>>(new Set(initialTopics));
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [pool, setPool] = useState<Pool>("all");
@@ -95,7 +95,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
   const sectionTitle = "mb-3 flex items-center gap-2 font-display text-xl font-semibold";
 
   return (
-    <div className="space-y-8 pb-32">
+    <div className="space-y-8 pb-48 lg:pb-32">
       <div><p className="eyebrow">Create session</p><h1 className="mt-1 text-4xl font-semibold">What do you want to do?</h1></div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -228,7 +228,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [] }: { t
       )}
 
       {mode && (
-        <div className="fixed inset-x-0 bottom-16 z-20 px-4 lg:bottom-4 lg:left-64">
+        <div className="fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom),16px)+80px)] z-20 px-4 lg:bottom-4 lg:left-64">
           <div className="mx-auto flex max-w-3xl items-center gap-4 glass-float !rounded-2xl p-3 pl-5">
             <div className="min-w-0 flex-1 text-sm">
               <div className="font-semibold">{effective} question{effective === 1 ? "" : "s"} · {mode === "study" ? "Study mode" : timed ? `Exam · ${minutes} min` : "Exam · untimed"}</div>

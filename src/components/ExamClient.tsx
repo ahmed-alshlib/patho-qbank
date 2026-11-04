@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronLeft, ChevronRight, Clock, Flag, GraduationCap, Highlighter, Star } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Clock, Flag, GraduationCap, Highlighter, LayoutGrid, Star } from "lucide-react";
 import { answerInSession, finishSession } from "@/app/actions-session";
 import { toggleBookmark } from "@/app/actions-study";
 import type { Hl, StudyQuestion } from "@/lib/questions";
-import { FontSizeControl, SessionProgress, useFontScale } from "@/components/FontSize";
+import { FontSizeControl, useFontScale } from "@/components/FontSize";
+import { ActionBar, LogoLine, NavRail, NavSheet, type NavFilter, type NavItem } from "@/components/SessionNav";
 import HighlightedText from "@/components/HighlightedText";
 import { ChoiceGrid, GRID_FROM, GroupPanel } from "@/components/QuestionGroup";
 
@@ -24,6 +25,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
   const [confirm, setConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [navOpen, setNavOpen] = useState(false);
   const startedAt = useRef(Date.now());
   const deadline = useRef(remainingSec === null ? null : Date.now() + remainingSec * 1000);
   const tempId = useRef(0);
@@ -46,7 +48,10 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
     return () => clearInterval(t);
   }, [finish]);
 
-  const go = useCallback((n: number) => { setI(n); startedAt.current = Date.now(); }, []);
+  const go = useCallback((n: number) => {
+    setI(n); startedAt.current = Date.now();
+    if (typeof window !== "undefined" && window.scrollY > 120) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   const choose = useCallback((choiceId: string) => {
     const qid = q.id, secs = (Date.now() - startedAt.current) / 1000;
@@ -73,80 +78,107 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
   const unanswered = questions.length - answeredCount;
   const urgent = left !== null && left <= 60, warn = left !== null && left <= 300;
 
+  const navItems: NavItem[] = questions.map((x) => ({ id: x.id, tone: answers[x.id] ? "answered" : "none", flagged: flagged.has(x.id), grouped: !!x.group }));
+  const filters: NavFilter[] = [
+    { key: "all", label: "All", test: () => true },
+    { key: "left", label: "Left", test: (x) => x.tone === "none" },
+    { key: "flag", label: "Flagged", test: (x) => !!x.flagged },
+  ];
+  const summary = `${answeredCount} answered · ${unanswered} left`;
+  const toggleFlag = () => setFlagged((f) => { const n = new Set(f); n.has(q.id) ? n.delete(q.id) : n.add(q.id); return n; });
+  const timer = left !== null
+    ? <span className={`chip shrink-0 tabular-nums !text-sm !font-semibold ${urgent ? "!bg-bad/15 !text-bad animate-pulse" : warn ? "!bg-warn/15 !text-warn" : ""}`}><Clock className="h-3.5 w-3.5" />{clock(left)}</span>
+    : <span className="chip shrink-0">Untimed</span>;
+
   return (
-    <div className="mx-auto max-w-3xl space-y-5" style={font.style}>
-      <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 border-b border-line bg-bg/90 px-4 py-3 backdrop-blur lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0">
-        <span className="chip !text-brand"><GraduationCap className="h-3.5 w-3.5" />Exam mode</span>
-        <FontSizeControl f={font} />
-        {left !== null
-          ? <span className={`chip tabular-nums !text-sm !font-semibold ${urgent ? "!bg-bad/15 !text-bad animate-pulse" : warn ? "!bg-warn/15 !text-warn" : ""}`}><Clock className="h-3.5 w-3.5" />{clock(left)}</span>
-          : <span className="chip">Untimed</span>}
-      </div>
+    <div className="mx-auto max-w-6xl" style={font.style}>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6">
+        <div className="min-w-0 space-y-4 pb-28 lg:pb-0">
+          <div className="flex items-center gap-2.5">
+            <span className="chip hidden shrink-0 !text-brand sm:inline-flex"><GraduationCap className="h-3.5 w-3.5" />Exam</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2 text-xs font-semibold"><span className="tabular-nums">{i + 1} of {questions.length}</span><span className="text-muted">{answeredCount} answered</span></div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label="Exam progress" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answeredCount}>
+                <div className="h-full rounded-full bg-gradient-to-r from-brand to-brand2 transition-[width] duration-500" style={{ width: `${questions.length ? Math.round((answeredCount / questions.length) * 100) : 0}%` }} />
+              </div>
+            </div>
+            {timer}
+            <span className="hidden sm:block"><FontSizeControl f={font} /></span>
+            <button onClick={() => setNavOpen(true)} aria-label="All questions" data-testid="open-nav" className="btn-ghost h-11 w-11 shrink-0 !p-0 lg:hidden"><LayoutGrid className="h-5 w-5" /></button>
+          </div>
 
-      <SessionProgress done={answeredCount} total={questions.length} position={i + 1} />
+          <div key={q.id} className="card card-solid animate-rise space-y-5 !p-5 sm:!p-7">
+            <div className="flex items-start justify-between gap-3">
+              <span className="chip">Question {i + 1} of {questions.length}</span>
+              <div className="flex gap-1">
+                <button aria-label="Bookmark" title="Bookmark" className={`btn-ghost h-10 w-10 !p-0 ${bookmarked[q.id] ? "!border-warn/50 !bg-warn/10" : ""}`}
+                  onClick={() => { const qid = q.id; setBookmarked((m) => ({ ...m, [qid]: !m[qid] })); toggleBookmark(qid).then((v) => setBookmarked((m) => ({ ...m, [qid]: v }))); }}>
+                  <Star className={`h-4 w-4 ${bookmarked[q.id] ? "fill-warn text-warn" : ""}`} />
+                </button>
+                <button aria-label="Flag for review" title="Flag for review (F)" className={`btn-ghost h-10 w-10 !p-0 ${flagged.has(q.id) ? "!border-warn/50 !bg-warn/10" : ""}`} onClick={toggleFlag}>
+                  <Flag className={`h-4 w-4 ${flagged.has(q.id) ? "fill-warn text-warn" : ""}`} />
+                </button>
+              </div>
+            </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {questions.map((x, n) => {
-          const tone = answers[x.id] ? "bg-brand text-white" : "bg-raised text-muted";
-          return (
-            <button key={x.id} onClick={() => go(n)} title={x.group ? `Question ${n + 1} — part of a block` : `Question ${n + 1}`} className={`relative grid h-8 min-w-8 place-items-center rounded-lg px-1 text-xs font-semibold transition hover:scale-110 ${tone} ${x.group ? "border-b-2 border-brand/70" : ""} ${n === i ? "ring-2 ring-brand ring-offset-2 ring-offset-bg" : ""}`}>
-              {n + 1}{flagged.has(x.id) && <Flag className="absolute -right-1 -top-1 h-3 w-3 fill-warn text-warn" />}
-            </button>
-          );
-        })}
-      </div>
+            {q.group && (
+              <GroupPanel g={q.group} open={openGroups[q.group.id] ?? q.group.index === 0}
+                onToggle={() => setOpenGroups((m) => ({ ...m, [q.group!.id]: !(m[q.group!.id] ?? q.group!.index === 0) }))} />
+            )}
 
-      <div key={q.id} className="card card-solid animate-rise space-y-6 !p-6 sm:!p-8">
-        <div className="flex items-start justify-between gap-3">
-          <span className="chip">Question {i + 1} of {questions.length}</span>
-          <div className="flex gap-1">
-            <button aria-label="Bookmark" title="Bookmark" className={`btn-ghost !p-2 ${bookmarked[q.id] ? "!border-warn/50 !bg-warn/10" : ""}`}
-              onClick={() => { const qid = q.id; setBookmarked((m) => ({ ...m, [qid]: !m[qid] })); toggleBookmark(qid).then((v) => setBookmarked((m) => ({ ...m, [qid]: v }))); }}>
-              <Star className={`h-4 w-4 ${bookmarked[q.id] ? "fill-warn text-warn" : ""}`} />
-            </button>
-            <button aria-label="Flag for review" title="Flag for review (F)" className={`btn-ghost !p-2 ${flagged.has(q.id) ? "!border-warn/50 !bg-warn/10" : ""}`}
-              onClick={() => setFlagged((f) => { const n = new Set(f); n.has(q.id) ? n.delete(q.id) : n.add(q.id); return n; })}>
-              <Flag className={`h-4 w-4 ${flagged.has(q.id) ? "fill-warn text-warn" : ""}`} />
-            </button>
+            <div>
+              <HighlightedText text={q.text} highlights={marks[q.id] ?? []} className="qtext font-medium leading-relaxed"
+                onAdd={(s, e) => setMarks((m) => ({ ...m, [q.id]: [...(m[q.id] ?? []), { id: `t-${++tempId.current}`, target: "question", start: s, end: e }] }))}
+                onRemove={(ids) => setMarks((m) => ({ ...m, [q.id]: (m[q.id] ?? []).filter((h) => !ids.includes(h.id)) }))} />
+              <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Highlights are temporary and help you work through the question.</p>
+            </div>
+
+            <div className="space-y-2.5">
+              {q.choices.length >= GRID_FROM ? (
+                <ChoiceGrid choices={q.choices} selectedId={answers[q.id] ?? null} onPick={choose} />
+              ) : q.choices.map((c, n) => {
+                const on = answers[q.id] === c.id;
+                return (
+                  <button key={c.id} onClick={() => choose(c.id)} className={`group flex min-h-[58px] w-full items-center gap-3.5 rounded-2xl border-[1.5px] px-4 py-3 text-left transition duration-200 ${on ? "border-brand bg-brand/10 shadow-glow" : "border-line hover:border-brand/50 hover:bg-raised"}`}>
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold ${on ? "bg-brand text-white" : "bg-raised text-muted"}`}>{c.label}</span>
+                    <span className="qchoice leading-snug">{c.text}</span>
+                    <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] text-muted lg:block">{n + 1}</kbd>
+                  </button>
+                );
+              })}
+            </div>
+            {saveError && <p className="text-sm text-bad">{saveError}</p>}
+
+            <LogoLine className="justify-center" />
+
+            <div className="flex items-center justify-between gap-3 sm:hidden">
+              <span className="text-xs text-muted">Text size</span><FontSizeControl f={font} />
+            </div>
+
+            <div className="hidden items-center justify-between gap-2 border-t border-line pt-5 lg:flex">
+              <button className="btn-ghost" disabled={i === 0} onClick={() => go(i - 1)}><ChevronLeft className="h-4 w-4" />Previous</button>
+              <div className="flex gap-2">
+                <button className="btn-ghost" disabled={i === questions.length - 1} onClick={() => go(i + 1)}>Next<ChevronRight className="h-4 w-4" /></button>
+                <button className="btn" onClick={() => setConfirm(true)}>Finish exam</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {q.group && (
-          <GroupPanel g={q.group} open={openGroups[q.group.id] ?? q.group.index === 0}
-            onToggle={() => setOpenGroups((m) => ({ ...m, [q.group!.id]: !(m[q.group!.id] ?? q.group!.index === 0) }))} />
-        )}
-
-        <div>
-          <HighlightedText text={q.text} highlights={marks[q.id] ?? []} className="qtext leading-relaxed"
-            onAdd={(s, e) => setMarks((m) => ({ ...m, [q.id]: [...(m[q.id] ?? []), { id: `t-${++tempId.current}`, target: "question", start: s, end: e }] }))}
-            onRemove={(ids) => setMarks((m) => ({ ...m, [q.id]: (m[q.id] ?? []).filter((h) => !ids.includes(h.id)) }))} />
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Highlights are temporary and help you work through the question.</p>
-        </div>
-
-        <div className="space-y-2.5">
-          {q.choices.length >= GRID_FROM ? (
-            <ChoiceGrid choices={q.choices} selectedId={answers[q.id] ?? null} onPick={choose} />
-          ) : q.choices.map((c, n) => {
-            const on = answers[q.id] === c.id;
-            return (
-              <button key={c.id} onClick={() => choose(c.id)} className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition duration-200 ${on ? "border-brand bg-brand/10 shadow-glow" : "border-line hover:border-brand/50 hover:bg-raised"}`}>
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-bold ${on ? "bg-brand text-white" : "bg-raised text-muted"}`}>{c.label}</span>
-                <span className="qchoice leading-snug">{c.text}</span>
-                <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] text-muted sm:block">{n + 1}</kbd>
-              </button>
-            );
-          })}
-        </div>
-        {saveError && <p className="text-sm text-bad">{saveError}</p>}
-
-        <div className="flex items-center justify-between gap-2 border-t border-line pt-5">
-          <button className="btn-ghost" disabled={i === 0} onClick={() => go(i - 1)}><ChevronLeft className="h-4 w-4" />Previous</button>
-          <div className="flex gap-2">
-            <button className="btn-ghost" disabled={i === questions.length - 1} onClick={() => go(i + 1)}>Next<ChevronRight className="h-4 w-4" /></button>
-            <button className="btn" onClick={() => setConfirm(true)}>Finish exam</button>
-          </div>
-        </div>
+        <NavRail items={navItems} current={i} onGo={go} filters={filters} summary={summary} answeredOnly>
+          <button className="btn w-full" onClick={() => setConfirm(true)}>Finish exam</button>
+        </NavRail>
       </div>
+
+      <ActionBar>
+        <button className="btn-ghost h-14 w-14 shrink-0 !rounded-2xl !p-0" aria-label="Previous question" disabled={i === 0} onClick={() => go(i - 1)}><ChevronLeft className="h-5 w-5" /></button>
+        {i < questions.length - 1
+          ? <button className="btn h-14 flex-1 !rounded-2xl text-base" onClick={() => go(i + 1)}>Next question<ChevronRight className="h-5 w-5" /></button>
+          : <button className="btn h-14 flex-1 !rounded-2xl text-base" onClick={() => setConfirm(true)}>Finish exam</button>}
+      </ActionBar>
+
+      <NavSheet open={navOpen} onClose={() => setNavOpen(false)} items={navItems} current={i} onGo={go} filters={filters} summary={summary} answeredOnly
+        footer={<button className="btn h-12 flex-1" onClick={() => { setNavOpen(false); setConfirm(true); }}>Finish exam</button>} />
 
       {confirm && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4 backdrop-blur-sm" onClick={() => !finishing && setConfirm(false)}>

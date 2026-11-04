@@ -2,11 +2,12 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Clock, Flag, Highlighter, Keyboard, RotateCcw, Star, StickyNote, Trophy, Users, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, Flag, Highlighter, Keyboard, LayoutGrid, RotateCcw, Star, StickyNote, Trophy, Users, X } from "lucide-react";
 import { addHighlight, removeHighlights, reportQuestion, saveNote, submitAnswer, toggleBookmark } from "@/app/actions-study";
 import { answerInSession, finishSession } from "@/app/actions-session";
 import type { Hl, Reveal, StudyQuestion } from "@/lib/questions";
-import { FontSizeControl, SessionProgress, useFontScale } from "@/components/FontSize";
+import { FontSizeControl, useFontScale } from "@/components/FontSize";
+import { ActionBar, LogoLine, NavRail, NavSheet, type NavFilter, type NavItem } from "@/components/SessionNav";
 import HighlightedText from "@/components/HighlightedText";
 import { ChoiceGrid, GRID_FROM, GroupPanel } from "@/components/QuestionGroup";
 import { ProgressRing } from "@/components/ui";
@@ -33,6 +34,7 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const tempId = useRef(0);
   const [finishing, setFinishing] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteState, setNoteState] = useState<"idle" | "saving" | "saved">("idle");
   const [reportOpen, setReportOpen] = useState(false);
@@ -44,11 +46,11 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   const [pending, start] = useTransition();
   const startedAt = useRef(Date.now());
   const noteTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const revealRef = useRef<HTMLDivElement>(null);
 
   const q = questions[i];
   const reveal = retrying[q.id] ? undefined : results[q.id];
   const isDone = (id: string) => !!results[id] && retrying[id] !== true;
-  const answeredCount = questions.filter((x) => isDone(x.id)).length;
 
   useEffect(() => {
     if (reveal) return;
@@ -56,9 +58,17 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
     return () => clearInterval(t);
   }, [reveal, i]);
 
+  // On a phone the explanation opens below the fold: bring it into view once the answer is checked.
+  useEffect(() => {
+    if (!reveal || typeof window === "undefined" || window.innerWidth >= 1024) return;
+    const t = setTimeout(() => revealRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 120);
+    return () => clearTimeout(t);
+  }, [reveal]);
+
   const go = useCallback((n: number) => {
     setI(n); setSelected(null); setNoteOpen(false); setReportOpen(false); setReportDone(false); setElapsed(0);
     startedAt.current = Date.now();
+    if (typeof window !== "undefined" && window.scrollY > 120) window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   const submit = useCallback(() => {
@@ -160,135 +170,166 @@ export default function StudyClient({ questions, startAt, title, backHref, backL
   const hasNote = !!notes[q.id]?.trim();
   const doneCount = questions.filter((x) => isDone(x.id)).length;
 
+  const navItems: NavItem[] = questions.map((x) => {
+    const r = isDone(x.id) ? results[x.id] : undefined;
+    return { id: x.id, tone: r ? (r.isCorrect ? "correct" : "wrong") : "none", grouped: !!x.group };
+  });
+  const filters: NavFilter[] = [
+    { key: "all", label: "All", test: () => true },
+    { key: "wrong", label: "Wrong", test: (x) => x.tone === "wrong" },
+    { key: "left", label: "Left", test: (x) => x.tone === "none" },
+  ];
+  const summary = `${doneCount} answered · ${questions.length - doneCount} left`;
+  const firstLeft = navItems.findIndex((x, n) => n > i && x.tone === "none");
+  const retry = () => { setRetrying((m) => ({ ...m, [q.id]: true })); setSelected(null); startedAt.current = Date.now(); setElapsed(0); };
+  const primary = reveal
+    ? <button className="btn h-14 flex-1 !rounded-2xl text-base" onClick={next}>{finishing ? "Finishing…" : i === questions.length - 1 ? "Finish" : "Next question"}<ChevronRight className="h-5 w-5" /></button>
+    : <button className="btn h-14 flex-1 !rounded-2xl text-base" disabled={!selected || pending} onClick={submit}>{pending ? "Checking…" : "Check answer"}</button>;
+
   return (
-    <div className="mx-auto max-w-3xl space-y-5" style={font.style}>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <Link href={backHref} className="inline-flex items-center gap-1 text-muted transition hover:text-ink"><ChevronLeft className="h-4 w-4" />{backLabel}</Link>
-        <span className="font-medium">{title}</span>
-        <span className="flex items-center gap-2">
-          <FontSizeControl f={font} />
-          <span className="chip tabular-nums"><Clock className="h-3.5 w-3.5" />{reveal ? "done" : fmt(elapsed)}</span>
-          {testId && <button className="btn-ghost !px-3 !py-1.5 text-xs" disabled={finishing} onClick={() => void finishNow()}>End session</button>}
-        </span>
-      </div>
-
-      <SessionProgress done={doneCount} total={questions.length} position={i + 1} />
-
-      <div className="flex flex-wrap gap-1.5" aria-label="Question navigator">
-        {questions.map((x, n) => {
-          const r = results[x.id];
-          const state = n === i ? "ring-2 ring-brand ring-offset-2 ring-offset-bg " : "";
-          const tone = r ? (r.isCorrect ? "bg-good text-white" : "bg-bad text-white") : "bg-raised text-muted";
-          return (
-            <button key={x.id} onClick={() => go(n)} title={x.group ? `Question ${n + 1} — part of a ${x.group.kind === "case" ? "case" : x.group.kind === "emq" ? "EMQ" : "true/false block"}` : `Question ${n + 1}`}
-              className={`${state}${tone} ${x.group ? "border-b-2 border-brand/70 " : ""}grid h-8 min-w-8 place-items-center rounded-lg px-1 text-xs font-semibold transition hover:scale-110`}>{n + 1}</button>
-          );
-        })}
-      </div>
-
-      <div key={q.id + wrongFlash * 0} className="card card-solid animate-rise space-y-6 !p-6 sm:!p-8">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap gap-1.5">
-            <span className="chip">{q.subject} · {q.chapter}</span>
-            <span className="chip">{q.topic}</span>
-            {q.tags.map((t) => <span key={t} className="chip !border-brand/30 !bg-brand/10 !text-brand">{t}</span>)}
-          </div>
-          <div className="flex shrink-0 gap-1">
-            <button onClick={onBookmark} aria-label="Bookmark" title="Bookmark" className={`btn-ghost !p-2 ${bookmarked[q.id] ? "!border-warn/50 !bg-warn/10" : ""}`}>
-              <Star className={`h-4 w-4 transition ${bookmarked[q.id] ? "fill-warn text-warn" : ""}`} />
-            </button>
-            <button onClick={() => { setNoteOpen((o) => !o); setReportOpen(false); }} aria-label="Notes" title="Personal note" className={`btn-ghost relative !p-2 ${noteOpen ? "!border-brand/50 !bg-brand/10" : ""}`}>
-              <StickyNote className="h-4 w-4" />{hasNote && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand" />}
-            </button>
-            <button onClick={() => { setReportOpen((o) => !o); setNoteOpen(false); }} aria-label="Report" title="Report a problem" className="btn-ghost !p-2"><Flag className="h-4 w-4" /></button>
-          </div>
-        </div>
-
-        {q.group && (
-          <GroupPanel g={q.group} open={openGroups[q.group.id] ?? q.group.index === 0}
-            onToggle={() => setOpenGroups((m) => ({ ...m, [q.group!.id]: !(m[q.group!.id] ?? q.group!.index === 0) }))} />
-        )}
-
-        <div>
-          <HighlightedText text={q.text} highlights={tempHls[q.id] ?? []}
-            onAdd={(s, e) => onAddHl("question", s, e)} onRemove={onRemoveHl} className="qtext leading-relaxed" />
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Highlights on the question are temporary and clear when you answer.</p>
-        </div>
-
-        {noteOpen && (
-          <div className="animate-reveal overflow-hidden rounded-xl border border-brand/30 bg-brand/5 p-3">
-            <textarea className="input min-h-24 resize-y border-0 bg-transparent !shadow-none" placeholder="Write a personal note for this question…" value={notes[q.id] ?? ""} onChange={(e) => onNote(e.target.value)} autoFocus />
-            <div className="px-1 text-xs text-muted">{noteState === "saving" ? "Saving…" : noteState === "saved" ? "Saved" : "Notes save automatically"}</div>
-          </div>
-        )}
-        {reportOpen && (
-          <div className="animate-reveal overflow-hidden rounded-xl border border-bad/30 bg-bad/5 p-3">
-            {reportDone ? <p className="text-sm text-good">Thanks. Your report was sent.</p> : (
-              <>
-                <textarea className="input min-h-20 resize-y" placeholder="What is wrong with this question?" value={reportText} onChange={(e) => setReportText(e.target.value)} />
-                <div className="mt-2 flex justify-end"><button className="btn !py-2" disabled={!reportText.trim() || pending} onClick={sendReport}>Send report</button></div>
-              </>
-            )}
-          </div>
-        )}
-
-        <div className={`space-y-2.5 ${wrongFlash && reveal && !reveal.isCorrect ? "animate-shake" : ""}`}>
-          {q.choices.length >= GRID_FROM ? (
-            <ChoiceGrid choices={q.choices} selectedId={reveal ? reveal.choiceId : selected}
-              correctIds={reveal ? reveal.correctChoiceIds : null} chosenId={reveal?.choiceId ?? null}
-              disabled={!!reveal} onPick={(id) => setSelected(id)} />
-          ) : q.choices.map((c, n) => {
-            const isRight = !!reveal?.correctChoiceIds.includes(c.id), isWrong = reveal && reveal.choiceId === c.id && !reveal.isCorrect, isSel = selected === c.id && !reveal;
-            const cls = isRight ? "border-good bg-good/10" : isWrong ? "border-bad bg-bad/10" : isSel ? "border-brand bg-brand/10 shadow-glow" : reveal ? "border-line opacity-60" : "border-line hover:border-brand/50 hover:bg-raised";
-            const badge = isRight ? "bg-good text-white" : isWrong ? "bg-bad text-white" : isSel ? "bg-brand text-white" : "bg-raised text-muted";
-            return (
-              <button key={c.id} disabled={!!reveal} onClick={() => setSelected(c.id)}
-                className={`group flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition duration-200 ${cls} ${isRight ? "animate-pop" : ""}`}>
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-bold transition ${badge}`}>
-                  {isRight ? <Check className="h-4 w-4" /> : isWrong ? <X className="h-4 w-4" /> : c.label}
-                </span>
-                <span className="qchoice leading-snug">{c.text}</span>
-                {!reveal && <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] text-muted group-hover:block">{n + 1}</kbd>}
-              </button>
-            );
-          })}
-        </div>
-
-        {reveal && (
-          <div className={`animate-reveal overflow-hidden rounded-xl border p-4 ${reveal.isCorrect ? "border-good/40 bg-good/5" : "border-bad/40 bg-bad/5"}`}>
-            <div className={`mb-2 flex items-center gap-2 font-semibold ${reveal.isCorrect ? "text-good" : "text-bad"}`}>
-              {reveal.isCorrect ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
-              {reveal.isCorrect ? "Correct" : `Incorrect. The right answer is ${q.choices.filter((c) => reveal.correctChoiceIds.includes(c.id)).map((c) => c.label).join(" or ")}.`}
+    <div className="mx-auto max-w-6xl" style={font.style}>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6">
+        <div className="min-w-0 space-y-4 pb-28 lg:pb-0">
+          <div className="flex items-center gap-2.5">
+            <Link href={backHref} aria-label={backLabel} title={backLabel} className="btn-ghost h-11 w-11 shrink-0 !p-0"><X className="h-5 w-5" /></Link>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                <span className="truncate"><span className="tabular-nums">{i + 1} of {questions.length}</span><span className="hidden font-medium text-muted sm:inline"> · {title}</span></span>
+                <span className="inline-flex shrink-0 items-center gap-1 tabular-nums text-muted"><Clock className="h-3.5 w-3.5" />{reveal ? "done" : fmt(elapsed)}</span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label="Session progress" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={doneCount}>
+                <div className="h-full rounded-full bg-gradient-to-r from-brand to-brand2 transition-[width] duration-500" style={{ width: `${questions.length ? Math.round((doneCount / questions.length) * 100) : 0}%` }} />
+              </div>
             </div>
-            <HighlightedText text={reveal.explanation} highlights={(hls[q.id] ?? []).filter((h) => h.target === "explanation")}
-              onAdd={(s, e) => onAddHl("explanation", s, e)} onRemove={onRemoveHl} className="qexp leading-relaxed" />
-            {reveal.peers && (
-              <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted" data-testid="peer-stat">
-                <Users className="h-3.5 w-3.5" /><span><b className="text-ink">{reveal.peers.pct}%</b> of students got this right on their first try ({reveal.peers.n} students)</span>
+            <span className="hidden sm:block"><FontSizeControl f={font} /></span>
+            {testId && <button className="btn-ghost hidden !px-3 !py-2 text-xs sm:inline-flex" disabled={finishing} onClick={() => void finishNow()}>End session</button>}
+            <button onClick={() => setNavOpen(true)} aria-label="All questions" data-testid="open-nav" className="btn-ghost relative h-11 w-11 shrink-0 !p-0 lg:hidden">
+              <LayoutGrid className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div key={q.id + wrongFlash * 0} className="card card-solid animate-rise space-y-5 !p-5 sm:!p-7">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap gap-1.5">
+                <span className="chip">{q.chapter}</span>
+                <span className="chip">{q.topic}</span>
+                {q.tags.map((t) => <span key={t} className="chip !border-brand/30 !bg-brand/10 !text-brand">{t}</span>)}
+              </div>
+              <div className="flex shrink-0 gap-1">
+                <button onClick={onBookmark} aria-label="Bookmark" title="Bookmark" className={`btn-ghost h-10 w-10 !p-0 ${bookmarked[q.id] ? "!border-warn/50 !bg-warn/10" : ""}`}>
+                  <Star className={`h-4 w-4 transition ${bookmarked[q.id] ? "fill-warn text-warn" : ""}`} />
+                </button>
+                <button onClick={() => { setNoteOpen((o) => !o); setReportOpen(false); }} aria-label="Notes" title="Personal note" className={`btn-ghost relative h-10 w-10 !p-0 ${noteOpen ? "!border-brand/50 !bg-brand/10" : ""}`}>
+                  <StickyNote className="h-4 w-4" />{hasNote && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand" />}
+                </button>
+                <button onClick={() => { setReportOpen((o) => !o); setNoteOpen(false); }} aria-label="Report" title="Report a problem" className="btn-ghost h-10 w-10 !p-0"><Flag className="h-4 w-4" /></button>
+              </div>
+            </div>
+
+            {q.group && (
+              <GroupPanel g={q.group} open={openGroups[q.group.id] ?? q.group.index === 0}
+                onToggle={() => setOpenGroups((m) => ({ ...m, [q.group!.id]: !(m[q.group!.id] ?? q.group!.index === 0) }))} />
+            )}
+
+            <div>
+              <HighlightedText text={q.text} highlights={tempHls[q.id] ?? []}
+                onAdd={(s, e) => onAddHl("question", s, e)} onRemove={onRemoveHl} className="qtext font-medium leading-relaxed" />
+              <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted"><Highlighter className="h-3 w-3" />Highlights on the question are temporary and clear when you answer.</p>
+            </div>
+
+            {noteOpen && (
+              <div className="animate-reveal overflow-hidden rounded-xl border border-brand/30 bg-brand/5 p-3">
+                <textarea className="input min-h-24 resize-y border-0 bg-transparent !shadow-none" placeholder="Write a personal note for this question…" value={notes[q.id] ?? ""} onChange={(e) => onNote(e.target.value)} autoFocus />
+                <div className="px-1 text-xs text-muted">{noteState === "saving" ? "Saving…" : noteState === "saved" ? "Saved" : "Notes save automatically"}</div>
               </div>
             )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-2 border-t border-line pt-5">
-          <button className="btn-ghost" disabled={i === 0} onClick={() => go(i - 1)}><ChevronLeft className="h-4 w-4" />Previous</button>
-          <div className="flex gap-2">
-            {reveal ? (
-              <>
-                <button className="btn-ghost" onClick={() => { setRetrying((m) => ({ ...m, [q.id]: true })); setSelected(null); startedAt.current = Date.now(); setElapsed(0); }}><RotateCcw className="h-4 w-4" />Retry</button>
-                <button className="btn" onClick={next}>{finishing ? "Finishing…" : i === questions.length - 1 ? "Finish" : "Next"}<ChevronRight className="h-4 w-4" /></button>
-              </>
-            ) : (
-              <button className="btn" disabled={!selected || pending} onClick={submit}>{pending ? "Checking…" : "Submit answer"}</button>
+            {reportOpen && (
+              <div className="animate-reveal overflow-hidden rounded-xl border border-bad/30 bg-bad/5 p-3">
+                {reportDone ? <p className="text-sm text-good">Thanks. Your report was sent.</p> : (
+                  <>
+                    <textarea className="input min-h-20 resize-y" placeholder="What is wrong with this question?" value={reportText} onChange={(e) => setReportText(e.target.value)} />
+                    <div className="mt-2 flex justify-end"><button className="btn !py-2" disabled={!reportText.trim() || pending} onClick={sendReport}>Send report</button></div>
+                  </>
+                )}
+              </div>
             )}
+
+            <div className={`space-y-2.5 ${wrongFlash && reveal && !reveal.isCorrect ? "animate-shake" : ""}`}>
+              {q.choices.length >= GRID_FROM ? (
+                <ChoiceGrid choices={q.choices} selectedId={reveal ? reveal.choiceId : selected}
+                  correctIds={reveal ? reveal.correctChoiceIds : null} chosenId={reveal?.choiceId ?? null}
+                  disabled={!!reveal} onPick={(id) => setSelected(id)} />
+              ) : q.choices.map((c, n) => {
+                const isRight = !!reveal?.correctChoiceIds.includes(c.id), isWrong = reveal && reveal.choiceId === c.id && !reveal.isCorrect, isSel = selected === c.id && !reveal;
+                const cls = isRight ? "border-good bg-good/10" : isWrong ? "border-bad bg-bad/10" : isSel ? "border-brand bg-brand/10 shadow-glow" : reveal ? "border-line opacity-55" : "border-line hover:border-brand/50 hover:bg-raised";
+                const badge = isRight ? "bg-good text-white" : isWrong ? "bg-bad text-white" : isSel ? "bg-brand text-white" : "bg-raised text-muted";
+                return (
+                  <button key={c.id} disabled={!!reveal} onClick={() => setSelected(c.id)}
+                    className={`group flex min-h-[58px] w-full items-center gap-3.5 rounded-2xl border-[1.5px] px-4 py-3 text-left transition duration-200 ${cls} ${isRight ? "animate-pop" : ""}`}>
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold transition ${badge}`}>
+                      {isRight ? <Check className="h-4 w-4" /> : isWrong ? <X className="h-4 w-4" /> : c.label}
+                    </span>
+                    <span className="qchoice leading-snug">{c.text}</span>
+                    {!reveal && <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] text-muted lg:group-hover:block">{n + 1}</kbd>}
+                  </button>
+                );
+              })}
+            </div>
+
+            <LogoLine className="justify-center" />
+
+            {reveal && (
+              <div ref={revealRef} className={`animate-reveal scroll-mb-32 overflow-hidden rounded-2xl border p-4 sm:p-5 ${reveal.isCorrect ? "border-good/40 bg-good/5" : "border-bad/40 bg-bad/5"}`}>
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <div className={`flex items-center gap-2 font-semibold ${reveal.isCorrect ? "text-good" : "text-bad"}`}>
+                    {reveal.isCorrect ? <Check className="h-5 w-5 shrink-0" /> : <X className="h-5 w-5 shrink-0" />}
+                    {reveal.isCorrect ? "Correct" : `Not quite. The answer is ${q.choices.filter((c) => reveal.correctChoiceIds.includes(c.id)).map((c) => c.label).join(" or ")}.`}
+                  </div>
+                  <LogoLine className="hidden shrink-0 sm:flex" />
+                </div>
+                <HighlightedText text={reveal.explanation} highlights={(hls[q.id] ?? []).filter((h) => h.target === "explanation")}
+                  onAdd={(s, e) => onAddHl("explanation", s, e)} onRemove={onRemoveHl} className="qexp leading-relaxed" />
+                {reveal.peers && (
+                  <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-xs text-muted" data-testid="peer-stat">
+                    <Users className="h-3.5 w-3.5" /><span><b className="text-ink">{reveal.peers.pct}%</b> of students got this right on their first try ({reveal.peers.n} students)</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 sm:hidden">
+              <span className="text-xs text-muted">Text size</span><FontSizeControl f={font} />
+            </div>
+
+            <div className="hidden items-center justify-between gap-2 border-t border-line pt-5 lg:flex">
+              <button className="btn-ghost" disabled={i === 0} onClick={() => go(i - 1)}><ChevronLeft className="h-4 w-4" />Previous</button>
+              <span className="hidden items-center gap-1.5 text-xs text-muted xl:inline-flex"><Keyboard className="h-3.5 w-3.5" />1-5 choose · Enter check/next · ← → move</span>
+              <div className="flex gap-2">
+                {reveal && <button className="btn-ghost" onClick={retry}><RotateCcw className="h-4 w-4" />Retry</button>}
+                {reveal
+                  ? <button className="btn" onClick={next}>{finishing ? "Finishing…" : i === questions.length - 1 ? "Finish" : "Next"}<ChevronRight className="h-4 w-4" /></button>
+                  : <button className="btn whitespace-nowrap" disabled={!selected || pending} onClick={submit}>{pending ? "Checking…" : "Check answer"}</button>}
+              </div>
+            </div>
           </div>
         </div>
+
+        <NavRail items={navItems} current={i} onGo={go} filters={filters} summary={summary}>
+          {testId && <button className="btn-ghost w-full" disabled={finishing} onClick={() => void finishNow()}>End session</button>}
+        </NavRail>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-muted">
-        <span>{answeredCount} of {questions.length} answered</span>
-        <span className="hidden items-center gap-1.5 sm:inline-flex"><Keyboard className="h-3.5 w-3.5" />1-5 choose · Enter submit/next · ← → navigate</span>
-      </div>
+      <ActionBar>
+        <button className="btn-ghost h-14 w-14 shrink-0 !rounded-2xl !p-0" aria-label="Previous question" disabled={i === 0} onClick={() => go(i - 1)}><ChevronLeft className="h-5 w-5" /></button>
+        {reveal && <button className="btn-ghost h-14 w-14 shrink-0 !rounded-2xl !p-0" aria-label="Retry this question" onClick={retry}><RotateCcw className="h-5 w-5" /></button>}
+        {primary}
+      </ActionBar>
+
+      <NavSheet open={navOpen} onClose={() => setNavOpen(false)} items={navItems} current={i} onGo={go} filters={filters} summary={summary}
+        footer={<>
+          {testId && <button className="btn-ghost h-12 flex-1" disabled={finishing} onClick={() => { setNavOpen(false); void finishNow(); }}>Finish</button>}
+          <button className="btn h-12 flex-[2]" disabled={firstLeft < 0} onClick={() => { go(firstLeft); setNavOpen(false); }}>Next unanswered</button>
+        </>} />
     </div>
   );
 }
