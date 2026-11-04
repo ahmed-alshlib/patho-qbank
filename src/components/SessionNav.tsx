@@ -20,10 +20,10 @@ export function NavGrid({ items, current, onGo, test }: { items: NavItem[]; curr
   const shown = items.map((x, n) => ({ x, n })).filter(({ x }) => !test || test(x));
   if (!shown.length) return <p className="py-6 text-center text-sm text-muted">Nothing here.</p>;
   return (
-    <div className="grid grid-cols-5 gap-2" aria-label="Question navigator">
+    <div className="grid grid-cols-5 gap-2 p-1.5" aria-label="Question navigator">
       {shown.map(({ x, n }) => (
         <button key={x.id} onClick={() => onGo(n)} aria-label={`Question ${n + 1}`} aria-current={n === current || undefined}
-          className={`relative grid h-11 place-items-center rounded-xl border-[1.5px] text-sm font-bold tabular-nums transition hover:scale-105 ${TONE[x.tone]} ${n === current ? "ring-2 ring-ink ring-offset-2 ring-offset-[rgb(var(--surface))]" : ""} ${x.grouped ? "border-b-[3px] !border-b-brand" : ""}`}>
+          className={`relative grid h-11 place-items-center rounded-xl border-[1.5px] text-sm font-bold tabular-nums transition hover:scale-105 ${TONE[x.tone]} ${n === current ? "z-10 !border-[2.5px] !border-brand shadow-[0_0_0_4px_rgb(var(--brand)/.22)]" : ""} ${x.grouped ? "border-b-[3px] !border-b-brand" : ""}`}>
           {n + 1}
           {x.flagged && <Flag className="absolute -right-1 -top-1 h-3.5 w-3.5 fill-warn text-warn" />}
         </button>

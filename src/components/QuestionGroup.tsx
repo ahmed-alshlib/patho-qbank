@@ -42,7 +42,7 @@ export function GroupPanel({ g, open, onToggle }: { g: QGroup; open: boolean; on
         <div className="space-y-3 border-t border-brand/20 px-4 py-3">
           {g.body && <p className="qtext whitespace-pre-line leading-relaxed">{g.body}</p>}
           {g.options.length > 0 && (
-            <ul className="grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-x-5 gap-y-1.5 sm:grid-cols-2">
               {g.options.map((o) => (
                 <li key={o.label} className="flex gap-2 text-sm leading-snug">
                   <span className="font-semibold text-brand">{o.label}</span><span>{o.text}</span>

@@ -98,7 +98,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
     <div className="space-y-8 pb-48 lg:pb-32">
       <div><p className="eyebrow">Create session</p><h1 className="mt-1 text-4xl font-semibold">What do you want to do?</h1></div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {([["study", "Study mode", "See the correct answer and explanation right after each question. Best for learning.", BookOpenCheck],
            ["exam", "Exam mode", "Answer everything first. Results and explanations come at the end. Optional timer.", GraduationCap]] as const).map(([id, title, text, Icon]) => (
           <button key={id} onClick={() => setMode(id)} className={`card card-hover flex items-start gap-4 text-left ${mode === id ? "!border-brand shadow-glow" : ""}`}>
@@ -151,7 +151,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
             </div>
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-2">
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="card space-y-5">
               <div>
                 <h2 className={sectionTitle}>Question pool</h2>
