@@ -1,7 +1,7 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpenCheck, Check, ChevronDown, Clock, GraduationCap, Minus, Play, Shuffle, Timer } from "lucide-react";
+import { BookOpenCheck, Check, ChevronDown, Clock, GraduationCap, Minus, Play, Plus, Shuffle, Timer } from "lucide-react";
 import { createSession } from "@/app/actions-session";
 import type { Counts, Tree } from "@/lib/sessions";
 import { parseTags, sortTags } from "@/lib/tags";
@@ -12,6 +12,8 @@ const POOLS: { id: Pool; label: string; idx: number }[] = [
   { id: "bookmarked", label: "Bookmarked", idx: 3 }, { id: "answered", label: "Already done", idx: 4 },
 ];
 const MAX = 200;
+/** Mock exam presets: total questions spread evenly over the chapters, and the time. */
+const PRESETS = [{ id: "p20", q: 20, min: 30 }, { id: "p50", q: 50, min: 60 }] as const;
 
 function Box({ state }: { state: "none" | "some" | "all" }) {
   return (
@@ -32,6 +34,9 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
   const [randomize, setRandomize] = useState(true);
   const [timed, setTimed] = useState(false);
   const [minutes, setMinutes] = useState(20);
+  const [perCh, setPerCh] = useState<Record<string, number>>({}); // mock exam: chapterId → questions wanted
+  const [mockMin, setMockMin] = useState(30);
+  const [preset, setPreset] = useState<string>("p20");
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
@@ -43,11 +48,13 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
   }, [tree]);
   // Exams are offered only for the chapters picked above, grouped by subject, so one subject's
   // papers never crowd out another's and a choice in one subject never filters the others.
+  // In a mock exam the chapters are chosen by count, so every chapter's exams are offered.
+  const scope = useMemo(() => mode === "exam" ? new Set(tree.subjects.flatMap((s) => s.chapters.flatMap((c) => c.topics.map((t) => t.id)))) : selected, [mode, tree, selected]);
   const groups = useMemo(() => {
     return tree.subjects.flatMap((s) => {
       const tally = new Map<string, number>(); let none = 0;
       for (const c of s.chapters) for (const tp of c.topics) {
-        if (!selected.has(tp.id)) continue;
+        if (!scope.has(tp.id)) continue;
         for (const [k, v] of Object.entries(counts[tp.id] ?? {})) {
           const t = parseTags(k), n = v[idx] ?? 0;
           if (t.length) t.forEach((x) => tally.set(x, (tally.get(x) ?? 0) + n)); else none += n;
@@ -56,7 +63,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
       if (!tally.size) return [];
       return [{ id: s.id, name: s.name, tags: sortTags([...tally.keys()]).map((t) => ({ t, n: tally.get(t)! })), none }];
     });
-  }, [tree, selected, counts, idx]);
+  }, [tree, scope, counts, idx]);
   // Picks that no longer apply (their chapter was unticked) are ignored rather than silently filtering.
   const active = useMemo(() => {
     const ok = new Set<string>();
@@ -79,6 +86,29 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
   const available = useMemo(() => [...selected].reduce((s, t) => s + topicAvail(t), 0), [selected, wantBySubject, pool, counts]); // eslint-disable-line react-hooks/exhaustive-deps
   const effective = Math.max(0, Math.min(count, available, MAX));
 
+  // Mock exam: each chapter's count is capped by what is available under the current pool and exam picks.
+  const chAvail = (ch: { topics: { id: string }[] }) => ch.topics.reduce((s, t) => s + topicAvail(t.id), 0);
+  const allChapters = tree.subjects.flatMap((s) => s.chapters);
+  const mockPlan = Object.fromEntries(allChapters.map((c) => [c.id, Math.min(perCh[c.id] ?? 0, chAvail(c))]).filter(([, n]) => (n as number) > 0)) as Record<string, number>;
+  const mockTotal = Math.min(MAX, Object.values(mockPlan).reduce((a, b) => a + b, 0));
+  const bump = (id: string, d: number, cap: number) => { setPreset("custom"); setPerCh((p) => ({ ...p, [id]: Math.max(0, Math.min(cap, Math.min(p[id] ?? 0, cap) + d)) })); };
+  // A preset goes to the subjects already in the exam, or the first subject when nothing is picked yet.
+  const applyPreset = (pr: (typeof PRESETS)[number]) => {
+    const inUse = tree.subjects.filter((sub) => sub.chapters.some((c) => (perCh[c.id] ?? 0) > 0));
+    const targets = inUse.length ? inUse : tree.subjects.slice(0, 1);
+    spread(targets.flatMap((sub) => sub.chapters), pr.q);
+    setMockMin(pr.min); setPreset(pr.id);
+  };
+  useEffect(() => {
+    if (mode === "exam" && !Object.values(perCh).some((n) => n > 0)) applyPreset(PRESETS[0]);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const spread = (chs: { id: string; topics: { id: string }[] }[], total: number) => {
+    const list = chs.map((c) => ({ id: c.id, cap: chAvail(c), n: 0 })).filter((c) => c.cap > 0);
+    let left = total;
+    while (left > 0 && list.some((c) => c.n < c.cap)) for (const c of list) { if (left <= 0) break; if (c.n < c.cap) { c.n++; left--; } }
+    setPerCh((p) => { const n = { ...p }; chs.forEach((c) => { n[c.id] = 0; }); list.forEach((c) => { n[c.id] = c.n; }); return n; });
+  };
+
   const toggleTopics = (ids: string[], on: boolean) => setSelected((prev) => { const n = new Set(prev); ids.forEach((id) => (on ? n.add(id) : n.delete(id))); return n; });
   const stateOf = (ids: string[]) => { const k = ids.filter((id) => selected.has(id)).length; return k === 0 ? "none" : k === ids.length ? "all" : "some"; };
   const toggleSet = (set: Set<string>, v: string, fn: (s: Set<string>) => void) => { const n = new Set(set); n.has(v) ? n.delete(v) : n.add(v); fn(n); };
@@ -87,7 +117,9 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
     if (!mode) return;
     setError("");
     start(async () => {
-      const res = await createSession({ mode, topicIds: [...selected], count: effective, pool, tags: [...active], randomize, timed, minutes });
+      const res = mode === "exam"
+        ? await createSession({ mode, topicIds: allChapters.filter((c) => mockPlan[c.id]).flatMap((c) => c.topics.map((t) => t.id)), count: mockTotal, pool, tags: [...active], randomize: true, timed: true, minutes: mockMin, perChapter: mockPlan })
+        : await createSession({ mode, topicIds: [...selected], count: effective, pool, tags: [...active], randomize, timed, minutes });
       if (res.error) setError(res.error); else router.push(`/session/${res.id}`);
     });
   }
@@ -100,7 +132,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {([["study", "Study mode", "See the correct answer and explanation right after each question. Best for learning.", BookOpenCheck],
-           ["exam", "Exam mode", "Answer everything first. Results and explanations come at the end. Optional timer.", GraduationCap]] as const).map(([id, title, text, Icon]) => (
+           ["exam", "Mock exam", "Build your own exam: how many questions from each chapter, and the time. Answers and explanations at the end.", GraduationCap]] as const).map(([id, title, text, Icon]) => (
           <button key={id} onClick={() => setMode(id)} className={`card card-hover flex items-start gap-4 text-left ${mode === id ? "!border-brand shadow-glow" : ""}`}>
             <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${mode === id ? "bg-brand text-white" : "bg-brand/10 text-brand"}`}><Icon className="h-6 w-6" /></span>
             <span><span className="block font-display text-xl font-semibold">{title}</span><span className="mt-1 block text-sm text-muted">{text}</span></span>
@@ -110,7 +142,54 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
 
       {mode && (
         <div className="animate-rise space-y-8">
-          <section>
+          {mode === "exam" && (
+            <section data-testid="mock-chapters">
+              <h2 className={sectionTitle}>Start from</h2>
+              <div className="mb-6 grid grid-cols-3 gap-2.5" data-testid="mock-presets">
+                {[...PRESETS.map((pr) => ({ id: pr.id, top: `${pr.q} questions`, sub: `${pr.min} min`, on: () => applyPreset(pr) })), { id: "custom", top: "Custom", sub: "Your own mix", on: () => setPreset("custom") }].map((b) => (
+                  <button key={b.id} onClick={b.on} className={`flex h-16 flex-col items-center justify-center rounded-2xl border transition ${preset === b.id ? "border-brand bg-brand text-white shadow-glow" : "border-line bg-surface text-ink hover:border-brand/50"}`}>
+                    <span className="text-sm font-bold">{b.top}</span><span className={`text-xs ${preset === b.id ? "text-white/80" : "text-muted"}`}>{b.sub}</span>
+                  </button>
+                ))}
+              </div>
+              <h2 className={sectionTitle}>Questions per chapter</h2>
+              <div className="space-y-4">
+                {tree.subjects.map((sub) => {
+                  const subTotal = sub.chapters.reduce((s, c) => s + (mockPlan[c.id] ?? 0), 0);
+                  return (
+                    <div key={sub.id} className="card !p-0">
+                      <div className="flex flex-wrap items-center gap-2 border-b border-line p-4">
+                        <span className="font-display text-lg font-semibold">{sub.name}</span>
+                        {subTotal > 0 && <span className="chip !text-brand">{subTotal} Q</span>}
+                        <span className="ml-auto flex flex-wrap items-center gap-1.5 text-xs text-muted">Spread evenly:
+                          {[10, 20, 40, 50].map((n) => <button key={n} onClick={() => { setPreset("custom"); spread(sub.chapters, n); }} className="chip hover:text-ink">{n}</button>)}
+                          {subTotal > 0 && <button onClick={() => { setPreset("custom"); spread(sub.chapters, 0); }} className="chip hover:text-ink">Clear</button>}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-line">
+                        {sub.chapters.map((ch) => {
+                          const cap = chAvail(ch), n = Math.min(perCh[ch.id] ?? 0, cap);
+                          return (
+                            <div key={ch.id} className="flex items-center gap-3 px-4 py-2.5" data-testid={`mock-ch-${ch.name}`}>
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium">{ch.name}</div>
+                                <div className="text-xs text-muted">{cap} available</div>
+                              </div>
+                              <button aria-label={`Fewer from ${ch.name}`} disabled={n <= 0} onClick={() => bump(ch.id, -1, cap)} className="btn-ghost h-10 w-10 shrink-0 !p-0"><Minus className="h-4 w-4" /></button>
+                              <input aria-label={`Questions from ${ch.name}`} inputMode="numeric" value={n} onChange={(e) => { setPreset("custom"); setPerCh((p) => ({ ...p, [ch.id]: Math.max(0, Math.min(cap, Number(e.target.value.replace(/\D/g, "")) || 0)) })); }}
+                                className={`input !h-10 !w-14 !px-1 text-center text-base font-bold tabular-nums ${n ? "" : "text-muted"}`} />
+                              <button aria-label={`More from ${ch.name}`} disabled={n >= cap} onClick={() => bump(ch.id, 1, cap)} className="btn-ghost h-10 w-10 shrink-0 !p-0"><Plus className="h-4 w-4" /></button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+          {mode === "study" && <section>
             <h2 className={sectionTitle}>Chapters and topics</h2>
             <div className="space-y-4">
               {tree.subjects.map((sub) => {
@@ -149,7 +228,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
                 );
               })}
             </div>
-          </section>
+          </section>}
 
           <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="card space-y-5">
@@ -161,7 +240,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
               </div>
               <div data-testid="exam-filter">
                 <h2 className={sectionTitle}>Exams and years</h2>
-                {selected.size === 0 ? (
+                {scope.size === 0 ? (
                   <p className="text-sm text-muted">Choose chapters above, then narrow them to the exams their questions came from.</p>
                 ) : groups.length === 0 ? (
                   <p className="text-sm text-muted">The chapters you chose have no exam tags yet.</p>
@@ -190,7 +269,21 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
               </div>
             </div>
 
-            <div className="card space-y-5">
+            {mode === "exam" && (
+              <div className="card space-y-4" data-testid="mock-time">
+                <h2 className={sectionTitle}><Timer className="h-5 w-5 text-muted" />Time</h2>
+                <div className="grid grid-cols-5 gap-2">
+                  {[20, 30, 45, 60, 90].map((m) => <button key={m} onClick={() => { setMockMin(m); setPreset("custom"); }} className={`h-11 rounded-xl border text-sm font-semibold transition ${mockMin === m ? "border-brand bg-brand text-white" : "border-line text-muted hover:text-ink"}`}>{m}m</button>)}
+                </div>
+                <div className="flex items-center gap-3">
+                  <Clock className="h-4 w-4 text-muted" />
+                  <input type="number" min={1} max={360} value={mockMin} onChange={(e) => { setMockMin(Math.max(1, Math.min(360, Number(e.target.value) || 1))); setPreset("custom"); }} className="input !w-24 text-center" />
+                  <span className="text-sm text-muted">minutes{mockTotal > 0 && (() => { const s = Math.round((mockMin * 60) / mockTotal); return ` · about ${s >= 60 ? `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ""}` : `${s} s`} per question`; })()}</span>
+                </div>
+                <p className="text-xs text-muted">Questions are shuffled across chapters. Cases and EMQs stay together, so a chapter can get one or two extra questions.</p>
+              </div>
+            )}
+            {mode === "study" && <div className="card space-y-5">
               <div>
                 <h2 className={sectionTitle}>Number of questions</h2>
                 <div className="flex items-center gap-4">
@@ -207,22 +300,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
                 <Shuffle className="h-4 w-4 text-muted" /><span className="flex-1 text-sm font-medium">Randomize question order</span>
                 <span className={`relative h-6 w-11 rounded-full transition ${randomize ? "bg-brand" : "bg-raised"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${randomize ? "left-[22px]" : "left-0.5"}`} /></span>
               </button>
-              {mode === "exam" && (
-                <div className="space-y-3 border-t border-line pt-5">
-                  <button onClick={() => { setTimed((t) => !t); setMinutes(Math.max(1, effective)); }} className="flex w-full items-center gap-3 text-left">
-                    <Timer className="h-4 w-4 text-muted" /><span className="flex-1 text-sm font-medium">Timed exam</span>
-                    <span className={`relative h-6 w-11 rounded-full transition ${timed ? "bg-brand" : "bg-raised"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${timed ? "left-[22px]" : "left-0.5"}`} /></span>
-                  </button>
-                  {timed && (
-                    <div className="animate-reveal flex items-center gap-3">
-                      <Clock className="h-4 w-4 text-muted" />
-                      <input type="number" min={1} max={360} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} className="input !w-24 text-center" />
-                      <span className="text-sm text-muted">minutes{effective > 0 && ` (about ${(minutes / effective).toFixed(1)} min per question)`}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            </div>}
           </section>
         </div>
       )}
@@ -231,10 +309,15 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
         <div className="fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom),16px)+80px)] z-20 px-4 lg:bottom-4 lg:left-64">
           <div className="mx-auto flex max-w-3xl items-center gap-4 glass-float !rounded-2xl p-3 pl-5">
             <div className="min-w-0 flex-1 text-sm">
-              <div className="font-semibold">{effective} question{effective === 1 ? "" : "s"} · {mode === "study" ? "Study mode" : timed ? `Exam · ${minutes} min` : "Exam · untimed"}</div>
-              <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : selected.size === 0 ? "Select chapters or topics above" : `${available} available in your selection`}</div>
+              {mode === "exam" ? <>
+                <div className="font-semibold" data-testid="mock-summary">{mockTotal} question{mockTotal === 1 ? "" : "s"} · Mock exam · {mockMin} min</div>
+                <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : mockTotal === 0 ? "Add questions from the chapters above" : `From ${Object.keys(mockPlan).length} chapter${Object.keys(mockPlan).length === 1 ? "" : "s"}`}</div>
+              </> : <>
+                <div className="font-semibold">{effective} question{effective === 1 ? "" : "s"} · Study mode</div>
+                <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : selected.size === 0 ? "Select chapters or topics above" : `${available} available in your selection`}</div>
+              </>}
             </div>
-            <button className="btn !px-5 !py-3" disabled={pending || effective === 0} onClick={go}><Play className="h-4 w-4" />{pending ? "Creating…" : "Start"}</button>
+            <button className="btn !px-5 !py-3" disabled={pending || (mode === "exam" ? mockTotal === 0 : effective === 0)} onClick={go}><Play className="h-4 w-4" />{pending ? "Creating…" : "Start"}</button>
           </div>
         </div>
       )}

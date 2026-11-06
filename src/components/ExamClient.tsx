@@ -12,7 +12,7 @@ import { ChoiceGrid, GRID_FROM, GroupPanel } from "@/components/QuestionGroup";
 
 const clock = (s: number) => `${Math.floor(s / 3600) ? Math.floor(s / 3600) + ":" : ""}${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-export default function ExamClient({ testId, questions, startAt, remainingSec }: { testId: string; questions: StudyQuestion[]; startAt: number; remainingSec: number | null }) {
+export default function ExamClient({ testId, questions, startAt, remainingSec, mock = false }: { testId: string; questions: StudyQuestion[]; startAt: number; remainingSec: number | null; mock?: boolean }) {
   const router = useRouter();
   const font = useFontScale();
   const [i, setI] = useState(startAt);
@@ -95,7 +95,7 @@ export default function ExamClient({ testId, questions, startAt, remainingSec }:
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6">
         <div className="min-w-0 space-y-4 pb-28 lg:pb-0">
           <div className="flex items-center gap-2.5">
-            <span className="chip hidden shrink-0 !text-brand sm:inline-flex"><GraduationCap className="h-3.5 w-3.5" />Exam</span>
+            <span className="chip hidden shrink-0 !text-brand sm:inline-flex"><GraduationCap className="h-3.5 w-3.5" />{mock ? "Mock exam" : "Exam"}</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2 text-xs font-semibold"><span className="tabular-nums">{i + 1} of {questions.length}</span><span className="text-muted">{answeredCount} answered</span></div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label="Exam progress" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answeredCount}>

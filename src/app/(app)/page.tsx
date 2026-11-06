@@ -124,7 +124,7 @@ export default async function Dashboard() {
             next2
               ? { href: `/session/new?topics=${next2.topic.topicId}`, label: "Study next", sub: next2.topic.topic, icon: Target, tone: "bg-brand/15 text-brand", test: "study-next" }
               : { href: "/session/new?mode=study", label: "Study", sub: "pick chapters", icon: Zap, tone: "bg-brand/15 text-brand" },
-            { href: "/session/new?mode=exam", label: "Exam mode", sub: "timed or untimed", icon: Timer, tone: "bg-warn/15 text-warn" },
+            { href: "/session/new?mode=exam", label: "Mock exam", sub: "your chapters, your time", icon: Timer, tone: "bg-warn/15 text-warn" },
             { href: wrong ? "/practice/incorrect" : "/incorrect", label: "Retry mistakes", sub: `${wrong} question${wrong === 1 ? "" : "s"}`, icon: RotateCcw, tone: "bg-bad/15 text-bad" },
             { href: "/bookmarks", label: "Bookmarks", sub: `${counts.bookmarks} saved`, icon: Star, tone: "bg-sky-400/15 text-sky-500 dark:text-sky-300" },
           ].map((t) => (

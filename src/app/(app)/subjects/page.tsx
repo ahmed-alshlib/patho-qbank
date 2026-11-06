@@ -50,7 +50,7 @@ export default async function Subjects() {
             </div>
             <div className="mt-4 flex gap-2.5">
               {s.next && <Link href={`/study/${s.next.id}`} className="btn h-12 flex-1 !rounded-2xl">Practice</Link>}
-              <Link href="/session/new?mode=exam" className="btn-ghost h-12 flex-1 !rounded-2xl font-semibold">Exam</Link>
+              <Link href="/session/new?mode=exam" className="btn-ghost h-12 flex-1 !rounded-2xl font-semibold">Mock exam</Link>
             </div>
           </div>
 

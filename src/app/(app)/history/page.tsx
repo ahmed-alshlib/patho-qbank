@@ -32,7 +32,7 @@ export default async function History() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{s.mode === "exam" ? "Exam" : "Study"} · {s.total} questions</span>
+                    <span className="font-semibold">{s.mock ? "Mock exam" : s.mode === "exam" ? "Exam" : "Study"} · {s.total} questions</span>
                     {s.timed && <span className="chip"><Timer className="h-3 w-3" />{s.timeLimitSec ? Math.round(s.timeLimitSec / 60) : ""} min</span>}
                     {!done && <span className="chip !bg-warn/15 !text-warn">In progress</span>}
                   </div>

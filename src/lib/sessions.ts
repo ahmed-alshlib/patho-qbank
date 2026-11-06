@@ -48,17 +48,17 @@ export async function getTestQuestionIds(testId: string) {
   return r.map((x) => x.id);
 }
 
-export type SessionRow = { id: string; mode: string; timed: boolean; timeLimitSec: number | null; startedAt: Date; finishedAt: Date | null; total: number; answered: number; correct: number };
+export type SessionRow = { id: string; mode: string; mock: boolean; timed: boolean; timeLimitSec: number | null; startedAt: Date; finishedAt: Date | null; total: number; answered: number; correct: number };
 
 export async function listSessions(userId: string, limit = 100): Promise<SessionRow[]> {
-  const r = rows<{ id: string; mode: string; timed: boolean; time_limit_sec: number | null; started_at: string | Date; finished_at: string | Date | null; total: number; answered: number; correct: number }>(await db.execute(sql`
-    select t.id, t.mode, t.timed, t.time_limit_sec, t.started_at, t.finished_at,
+  const r = rows<{ id: string; mode: string; mock: boolean; timed: boolean; time_limit_sec: number | null; started_at: string | Date; finished_at: string | Date | null; total: number; answered: number; correct: number }>(await db.execute(sql`
+    select t.id, t.mode, (t.filters like '%"mock":true%') as mock, t.timed, t.time_limit_sec, t.started_at, t.finished_at,
       (select count(*) from test_questions tq where tq.test_id = t.id)::int as total,
       (select count(*) from (select distinct question_id from user_answers ua where ua.test_id = t.id and ua.user_id = t.user_id) x)::int as answered,
       (select count(*) from (select distinct on (question_id) is_correct from user_answers ua where ua.test_id = t.id and ua.user_id = t.user_id order by question_id, answered_at desc) y where y.is_correct)::int as correct
     from tests t where t.user_id = ${userId}
     order by (t.finished_at is not null), t.started_at desc limit ${limit}`));
-  return r.map((x) => ({ id: x.id, mode: x.mode, timed: x.timed, timeLimitSec: x.time_limit_sec, startedAt: new Date(x.started_at), finishedAt: x.finished_at ? new Date(x.finished_at) : null, total: x.total, answered: x.answered, correct: x.correct }));
+  return r.map((x) => ({ id: x.id, mode: x.mode, mock: !!x.mock, timed: x.timed, timeLimitSec: x.time_limit_sec, startedAt: new Date(x.started_at), finishedAt: x.finished_at ? new Date(x.finished_at) : null, total: x.total, answered: x.answered, correct: x.correct }));
 }
 
 export type ResultItem = {

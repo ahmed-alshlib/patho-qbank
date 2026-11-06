@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CheckCircle2, CircleHelp, Clock, RotateCcw, XCircle, Plus } from "lucide-react";
+import { CheckCircle2, CircleHelp, Clock, RotateCcw, XCircle, Plus, TrendingDown, TrendingUp, Target } from "lucide-react";
 import { getUser, requireUser } from "@/lib/auth";
 import { getResults } from "@/lib/sessions";
-import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { eq, sql } from "drizzle-orm";
+import { db, topics } from "@/db";
 import { retryIncorrect } from "../../../actions-session";
 import { Bar, ProgressRing } from "@/components/ui";
 import ResultReview from "@/components/ResultReview";
@@ -15,6 +15,9 @@ function fmt(sec: number) {
   const m = Math.floor(sec / 60), s = sec % 60;
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m ${String(s).padStart(2, "0")}s`;
 }
+
+/** A mock exam counts as passed from this score. */
+const PASS_MARK = 60;
 
 export default async function Results({ params }: { params: Promise<{ testId: string }> }) {
   const { testId } = await params;
@@ -50,12 +53,47 @@ export default async function Results({ params }: { params: Promise<{ testId: st
   const byChapter = group("chapter");
   const byTopic = group("topic");
 
+  let mock = false; try { mock = !!JSON.parse(test.filters || "{}").mock; } catch {}
+  // Mock exams: compare with the student's previous mock on the same subjects, and point at the weakest chapter.
+  let prev: number | null = null;
+  let weakest: { name: string; c: number; t: number; href: string } | null = null;
+  if (mock) {
+    const subs = [...new Set(items.map((i) => i.subjectId))].sort().join(",");
+    const rowsPrev = Array.from((await db.execute(sql`
+      select t.id,
+        (select count(*) from test_questions tq where tq.test_id = t.id)::int as total,
+        (select count(*) from (select distinct on (question_id) is_correct from user_answers ua where ua.test_id = t.id and ua.user_id = t.user_id order by question_id, answered_at desc) y where y.is_correct)::int as correct,
+        (select string_agg(distinct c.subject_id, ',' order by c.subject_id) from test_questions tq join questions q on q.id = tq.question_id join topics tp on tp.id = q.topic_id join chapters c on c.id = tp.chapter_id where tq.test_id = t.id) as subs
+      from tests t
+      where t.user_id = ${user.id} and t.id <> ${testId} and t.finished_at is not null and t.finished_at < ${new Date(test.finishedAt!).toISOString()}::timestamptz
+        and t.filters like '%"mock":true%'
+      order by t.finished_at desc limit 20`)) as unknown as ArrayLike<{ total: number; correct: number; subs: string }>);
+    const p = rowsPrev.find((x) => x.subs === subs && x.total > 0);
+    if (p) prev = Math.round((p.correct / p.total) * 100);
+    const chMap = new Map<string, { id: string; name: string; c: number; t: number }>();
+    for (const i of items) { const g = chMap.get(i.chapterId) ?? { id: i.chapterId, name: i.chapter, c: 0, t: 0 }; g.t++; if (i.status === "correct") g.c++; chMap.set(i.chapterId, g); }
+    const w = [...chMap.values()].filter((g) => g.c < g.t).sort((a, b) => a.c / a.t - b.c / b.t || b.t - a.t)[0];
+    if (w && chMap.size > 1) {
+      const tids = (await db.select({ id: topics.id }).from(topics).where(eq(topics.chapterId, w.id))).map((x) => x.id);
+      weakest = { name: w.name, c: w.c, t: w.t, href: `/session/new?mode=study&topics=${tids.join(",")}` };
+    }
+  }
+  const passed = score >= PASS_MARK;
+
   return (
     <div className="space-y-6">
       <div className="stagger space-y-6">
         <div>
-          <p className="eyebrow">{test.mode === "exam" ? "Exam" : "Study"} session results</p>
-          <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{score >= 80 ? "Excellent work" : score >= 60 ? "Good effort" : "Keep going"}</h1>
+          <p className="eyebrow">{mock ? "Mock exam results" : `${test.mode === "exam" ? "Exam" : "Study"} session results`}</p>
+          <h1 className="mt-1 text-3xl font-semibold sm:text-4xl" data-testid="result-headline">{mock ? (passed ? "You'd pass" : "Below the pass mark") : score >= 80 ? "Excellent work" : score >= 60 ? "Good effort" : "Keep going"}</h1>
+          {mock && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className={`chip ${passed ? "!text-good" : "!text-bad"}`}>Pass mark {PASS_MARK}%</span>
+              {prev !== null && (score === prev
+                ? <span className="chip">Same as your last mock ({prev}%)</span>
+                : <span className={`chip ${score > prev ? "!text-good" : "!text-bad"}`} data-testid="vs-last">{score > prev ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}{score > prev ? "+" : ""}{score - prev}% vs your last mock</span>)}
+            </div>
+          )}
         </div>
 
         <section className="relative overflow-hidden rounded-[28px] border border-brand/30 bg-gradient-to-br from-brand/20 via-brand/5 to-transparent p-5 shadow-lift sm:p-7">
@@ -91,6 +129,14 @@ export default async function Results({ params }: { params: Promise<{ testId: st
             </div>
           </div>
         </section>
+
+        {weakest && (
+          <section className="flex flex-col gap-3 rounded-[22px] border border-bad/30 bg-bad/5 p-4 sm:flex-row sm:items-center" data-testid="weakest">
+            <Target className="h-5 w-5 shrink-0 text-bad" />
+            <p className="min-w-0 flex-1 text-sm"><b className="text-bad">Weakest chapter: {weakest.name}</b> <span className="text-muted">({weakest.c}/{weakest.t} correct)</span></p>
+            <Link href={weakest.href} className="btn shrink-0 !rounded-2xl">Practise this chapter</Link>
+          </section>
+        )}
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {[["By chapter", byChapter], ["By topic", byTopic]].map(([title, list]) => (

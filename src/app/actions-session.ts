@@ -23,6 +23,8 @@ export type SessionInput = {
   randomize: boolean;
   timed: boolean;
   minutes: number;
+  /** Mock exam: how many questions to take from each chapter (chapterId → count). */
+  perChapter?: Record<string, number>;
 };
 
 const MAX_QUESTIONS = 200;
@@ -61,7 +63,7 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
 
   const allowed = [...(await accessibleSubjectIds(user.id))];
   if (!allowed.length) return { error: "Subscribe to a subject first to create a session." };
-  let cands = await db.select({ id: questions.id, tags: questions.tags, subjectId: chapters.subjectId, groupId: questions.groupId, groupOrder: questions.groupOrder })
+  let cands = await db.select({ id: questions.id, tags: questions.tags, subjectId: chapters.subjectId, chapterId: chapters.id, groupId: questions.groupId, groupOrder: questions.groupOrder })
     .from(questions).innerJoin(topics, eq(questions.topicId, topics.id)).innerJoin(chapters, eq(topics.chapterId, chapters.id))
     .where(and(inArray(questions.topicId, input.topicIds.slice(0, 500)), inArray(chapters.subjectId, allowed)))
     .orderBy(asc(chapters.order), asc(chapters.name), asc(topics.order), asc(topics.name), asc(questions.order));
@@ -93,11 +95,33 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
     seenGroup.add(c.groupId);
     units.push(cands.filter((x) => x.groupId === c.groupId && keep.has(x.id)).sort((a, b) => a.groupOrder - b.groupOrder).map((x) => x.id));
   }
-  if (input.randomize) shuffle(units);
   const picked: string[] = [];
-  for (const u of units) { if (picked.length >= count) break; picked.push(...u); }
+  let mock: Record<string, number> | null = null;
+  if (input.mode === "exam" && input.perChapter && Object.keys(input.perChapter).length) {
+    // Mock exam: fill each chapter's quota from its own questions, then mix the chapters together.
+    mock = {};
+    for (const [cid, n] of Object.entries(input.perChapter).slice(0, 200)) { const k = Math.max(0, Math.min(MAX_QUESTIONS, Math.floor(Number(n)) || 0)); if (k) mock[cid] = k; }
+    const chapterOf = new Map(cands.map((c) => [c.id, c.chapterId]));
+    const chosen: string[][] = [];
+    for (const [cid, want] of Object.entries(mock)) {
+      const mine = shuffle(units.filter((u) => chapterOf.get(u[0]) === cid));
+      // Take whatever fits the quota first (single questions, small blocks), then one more block only
+      // if the chapter would otherwise come up short — so a case of 4 never turns 2 questions into 6.
+      let got = 0;
+      const rest: string[][] = [];
+      for (const u of mine) { if (got + u.length <= want) { chosen.push(u); got += u.length; } else rest.push(u); }
+      if (got < want && rest.length) chosen.push(rest.sort((a, b) => a.length - b.length)[0]);
+    }
+    shuffle(chosen);
+    for (const u of chosen) { if (picked.length >= MAX_QUESTIONS) break; picked.push(...u); }
+    if (!picked.length) return { error: "No questions match these choices. Try a different pool or other exams." };
+  } else {
+    if (input.randomize) shuffle(units);
+    for (const u of units) { if (picked.length >= count) break; picked.push(...u); }
+  }
   ids = picked;
-  const id = await insertSession(user.id, input.mode, ids, { timed: input.timed, minutes, randomize: input.randomize, filters: { topicIds: input.topicIds, pool: input.pool, tags: (input.tags ?? []).slice(0, 200) } });
+  const timed = mock ? true : input.timed;
+  const id = await insertSession(user.id, input.mode, ids, { timed, minutes, randomize: mock ? true : input.randomize, filters: { topicIds: input.topicIds, pool: input.pool, tags: (input.tags ?? []).slice(0, 200), ...(mock ? { mock: true, perChapter: mock } : {}) } });
   return { id };
 }
 

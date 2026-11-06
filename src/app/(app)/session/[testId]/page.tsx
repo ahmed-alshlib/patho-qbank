@@ -22,7 +22,8 @@ export default async function SessionPage({ params }: { params: Promise<{ testId
   if (exam) {
     const remaining = t.timed && t.timeLimitSec ? Math.max(0, t.timeLimitSec - Math.floor((Date.now() - t.startedAt.getTime()) / 1000)) : null;
     const first = data.findIndex((q) => !q.selected);
-    return <ExamClient testId={testId} questions={data} startAt={first === -1 ? 0 : first} remainingSec={remaining} />;
+    let mock = false; try { mock = !!JSON.parse(t.filters || "{}").mock; } catch {}
+    return <ExamClient testId={testId} questions={data} startAt={first === -1 ? 0 : first} remainingSec={remaining} mock={mock} />;
   }
   const first = data.findIndex((q) => !q.previous);
   return <StudyClient testId={testId} questions={data} startAt={first === -1 ? 0 : first} title="Study session" backHref="/history" backLabel="History" />;
