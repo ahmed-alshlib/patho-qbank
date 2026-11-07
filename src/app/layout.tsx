@@ -1,6 +1,7 @@
 import "@fontsource-variable/inter";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { AnalyticsInit } from "@/components/Analytics";
 
 export const metadata: Metadata = {
   title: "Rakeez", description: "Rakeez – question bank for medical students",
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-      <body>{children}</body>
+      <body><AnalyticsInit />{children}</body>
     </html>
   );
 }

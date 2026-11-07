@@ -1,5 +1,5 @@
 "use server";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, answerChoices, bookmarks, chapters, questions, testQuestions, tests, topics, userAnswers } from "@/db";
 import { getUser } from "@/lib/auth";
@@ -7,6 +7,7 @@ import { latestForQuestions, type Reveal } from "@/lib/questions";
 import { peerStats } from "@/lib/peers";
 import { accessibleSubjectIds, assertQuestionAccess } from "@/lib/access";
 import { normalizeTag, parseTags } from "@/lib/tags";
+import { track } from "@/lib/analytics";
 
 async function me() {
   const user = await getUser();
@@ -122,6 +123,7 @@ export async function createSession(input: SessionInput): Promise<{ id?: string;
   ids = picked;
   const timed = mock ? true : input.timed;
   const id = await insertSession(user.id, input.mode, ids, { timed, minutes, randomize: mock ? true : input.randomize, filters: { topicIds: input.topicIds, pool: input.pool, tags: (input.tags ?? []).slice(0, 200), ...(mock ? { mock: true, perChapter: mock } : {}) } });
+  await track(user.id, "session_started", { mode: mock ? "mock_exam" : input.mode, questions: ids.length, minutes: timed ? minutes : null, pool: input.pool, exam_tags: (input.tags ?? []).length });
   return { id };
 }
 
@@ -151,7 +153,15 @@ export async function answerInSession(testId: string, questionId: string, choice
 
 export async function finishSession(testId: string) {
   const user = await me();
-  await db.update(tests).set({ finishedAt: new Date() }).where(and(eq(tests.id, testId), eq(tests.userId, user.id), isNull(tests.finishedAt)));
+  const done = await db.update(tests).set({ finishedAt: new Date() }).where(and(eq(tests.id, testId), eq(tests.userId, user.id), isNull(tests.finishedAt))).returning({ mode: tests.mode, filters: tests.filters });
+  if (done[0]) {
+    const r = Array.from((await db.execute(sql`
+      select (select count(*) from test_questions where test_id = ${testId})::int as total,
+             (select count(*) from (select distinct on (question_id) is_correct from user_answers where test_id = ${testId} and user_id = ${user.id} order by question_id, answered_at desc) y where y.is_correct)::int as correct`)) as unknown as ArrayLike<{ total: number; correct: number }>)[0];
+    const mock = (done[0].filters ?? "").includes('"mock":true');
+    const score = r?.total ? Math.round((r.correct / r.total) * 100) : 0;
+    await track(user.id, "session_finished", { mode: mock ? "mock_exam" : done[0].mode, questions: r?.total ?? 0, score, passed: mock ? score >= 60 : null });
+  }
 }
 
 /** Starts a new study session containing only the questions missed in a finished session. */

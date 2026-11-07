@@ -7,6 +7,7 @@ import { createSession, destroySession } from "@/lib/auth";
 import { clearLimit, clientIp, rateLimit } from "@/lib/rate";
 import { checkCode, issueCode } from "@/lib/codes";
 import { mailProvider } from "@/lib/mail";
+import { track } from "@/lib/analytics";
 
 export type FormState = { error?: string; info?: string; name?: string; email?: string } | undefined;
 
@@ -58,6 +59,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
   if (dupe) await db.update(users).set({ name, passwordHash }).where(eq(users.id, dupe.id));
   const user = dupe ?? (await db.insert(users).values({ name, email, passwordHash, emailVerifiedAt: noMail ? new Date() : null }).returning())[0];
 
+  if (!dupe) await track(user.id, "signed_up");
   if (noMail) { await createSession(user.id); redirect("/plans?welcome=1"); }
   if (!(await sendCodeSafely(email, "verify"))) return { error: "We couldn't send the verification email. Please try again in a few minutes.", name, email };
   redirect(`/verify?email=${encodeURIComponent(email)}`);

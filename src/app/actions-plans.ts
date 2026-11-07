@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { db, subjects, subscriptions, coupons } from "@/db";
 import { getUser } from "@/lib/auth";
 import { addMonths } from "@/lib/access";
+import { track } from "@/lib/analytics";
 
 function ref() {
   const a = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -40,6 +41,7 @@ export async function requestSubscription(formData: FormData) {
     const base = new Date(Math.max(now.getTime(), ...mine.map((m) => m.expiresAt?.getTime() ?? 0)));
     await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "active", reference: "COUPON", price: 0, coupon: couponCode, listPrice: sub.price, approvedAt: now, expiresAt: addMonths(base, sub.durationMonths) });
   } else await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "pending", reference: ref(), price, coupon: couponCode, listPrice: sub.price });
+  await track(user.id, "subscription_requested", { subject: sub.name, price, coupon: couponCode || null, free_with_coupon: !!couponCode && price <= 0 });
   redirect("/plans");
 }
 
@@ -67,5 +69,6 @@ export async function enrollFree(formData: FormData) {
   const now = new Date();
   const base = new Date(Math.max(now.getTime(), ...running.map((r) => r.expiresAt?.getTime() ?? 0)));
   await db.insert(subscriptions).values({ userId: user.id, subjectId, status: "active", reference: "FREE", price: 0, approvedAt: now, expiresAt: addMonths(base, sub.durationMonths) });
+  await track(user.id, "free_subject_enrolled", { subject: sub.name });
   redirect("/plans");
 }

@@ -11,6 +11,7 @@ import MobileMenu from "@/components/MobileMenu";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import InstallPrompt from "@/components/InstallPrompt";
 import Logo from "@/components/Logo";
+import { AnalyticsIdentify } from "@/components/Analytics";
 import { getLiveAnnouncements } from "@/lib/announcements";
 
 function Brand() {
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen lg:flex">
+      <AnalyticsIdentify userId={user.id} />
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 border-r border-line bg-[rgb(var(--glass)/.62)] p-5 backdrop-blur-2xl backdrop-saturate-150 lg:flex">
         <Brand />
         <Link href="/session/new" className="btn !py-3"><Plus className="h-4 w-4" />New session</Link>

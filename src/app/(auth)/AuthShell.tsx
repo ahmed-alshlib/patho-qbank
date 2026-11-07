@@ -1,5 +1,6 @@
 "use client";
 import Logo from "@/components/Logo";
+import { AnalyticsIdentify } from "@/components/Analytics";
 import "@fontsource/ibm-plex-sans-arabic/500.css";
 import "@fontsource/ibm-plex-sans-arabic/600.css";
 
@@ -21,6 +22,7 @@ function Quote({ small = false }: { small?: boolean }) {
 export default function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="dark relative min-h-screen bg-[#052e16] bg-[url('/auth-bg-g.jpg')] bg-cover bg-center text-white">
+      <AnalyticsIdentify userId={null} />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#031a0c]/20 via-transparent to-[#031a0c]/45" />
       <div className="relative grid min-h-screen lg:grid-cols-2">
         <section className="hidden flex-col justify-between p-12 lg:flex">
