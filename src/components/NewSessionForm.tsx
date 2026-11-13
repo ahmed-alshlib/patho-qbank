@@ -1,15 +1,15 @@
 "use client";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpenCheck, Check, ChevronDown, Clock, GraduationCap, Minus, Play, Plus, Shuffle, Timer } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Check, ChevronDown, Clock, Minus, Plus, Shuffle, SlidersHorizontal, Timer } from "lucide-react";
 import { createSession } from "@/app/actions-session";
 import type { Counts, Tree } from "@/lib/sessions";
 import { parseTags, sortTags } from "@/lib/tags";
 
 type Pool = "all" | "unanswered" | "incorrect" | "bookmarked" | "answered";
 const POOLS: { id: Pool; label: string; idx: number }[] = [
-  { id: "all", label: "All questions", idx: 0 }, { id: "unanswered", label: "Unanswered", idx: 1 }, { id: "incorrect", label: "Incorrect", idx: 2 },
-  { id: "bookmarked", label: "Bookmarked", idx: 3 }, { id: "answered", label: "Already done", idx: 4 },
+  { id: "all", label: "All questions", idx: 0 }, { id: "unanswered", label: "New", idx: 1 }, { id: "incorrect", label: "Mistakes", idx: 2 },
+  { id: "bookmarked", label: "Saved", idx: 3 }, { id: "answered", label: "Already done", idx: 4 },
 ];
 const MAX = 200;
 /** Mock exam presets: total questions spread evenly over the chapters, and the time. */
@@ -17,15 +17,14 @@ const PRESETS = [{ id: "p20", q: 20, min: 30 }, { id: "p50", q: 50, min: 60 }] a
 
 function Box({ state }: { state: "none" | "some" | "all" }) {
   return (
-    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border transition ${state === "none" ? "border-line bg-surface" : "border-brand bg-brand text-white"}`}>
-      {state === "all" && <Check className="h-3.5 w-3.5" />}{state === "some" && <Minus className="h-3.5 w-3.5" />}
+    <span className={`grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border-[1.5px] transition duration-200 ${state === "none" ? "border-ink/25" : "border-mint bg-mint text-onmint"}`}>
+      {state === "all" && <Check className="h-3.5 w-3.5" strokeWidth={3} />}{state === "some" && <Minus className="h-3.5 w-3.5" strokeWidth={3} />}
     </span>
   );
 }
 
 export default function NewSessionForm({ tree, counts, initialTopics = [], initialMode = null }: { tree: Tree; counts: Counts; initialTopics?: string[]; initialMode?: "study" | "exam" | null }) {
-  const router = useRouter();
-  const [mode, setMode] = useState<"study" | "exam" | null>(initialMode);
+  const [mode, setMode] = useState<"study" | "exam">(initialMode ?? "study");
   const [selected, setSelected] = useState<Set<string>>(new Set(initialTopics));
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [pool, setPool] = useState<Pool>("all");
@@ -38,6 +37,7 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
   const [mockMin, setMockMin] = useState(30);
   const [preset, setPreset] = useState<string>("p20");
   const [error, setError] = useState("");
+  const router = useRouter();
   const [pending, start] = useTransition();
 
   const idx = POOLS.find((p) => p.id === pool)!.idx;
@@ -114,71 +114,83 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
   const toggleSet = (set: Set<string>, v: string, fn: (s: Set<string>) => void) => { const n = new Set(set); n.has(v) ? n.delete(v) : n.add(v); fn(n); };
 
   function go() {
-    if (!mode) return;
     setError("");
     start(async () => {
       const res = mode === "exam"
         ? await createSession({ mode, topicIds: allChapters.filter((c) => mockPlan[c.id]).flatMap((c) => c.topics.map((t) => t.id)), count: mockTotal, pool, tags: [...active], randomize: true, timed: true, minutes: mockMin, perChapter: mockPlan })
         : await createSession({ mode, topicIds: [...selected], count: effective, pool, tags: [...active], randomize, timed, minutes });
-      if (res.error) setError(res.error); else router.push(`/session/${res.id}`);
+      if (res.error || !res.id) { setError(res.error ?? "Something went wrong. Please try again."); return; }
+      const url = `/session/${res.id}`;
+      router.push(url);
+      // Safety net: now and then the smooth switch to the new session never completes and the button stays on
+      // "Creating…". The session already exists by then, so after a short wait open it with a normal page load.
+      window.setTimeout(() => { if (window.location.pathname !== url) window.location.assign(url); }, 2500);
     });
   }
 
-  const sectionTitle = "mb-3 flex items-center gap-2 font-display text-xl font-semibold";
+  const label = "eyebrow mb-2.5 px-1";
+  const chip = (on: boolean) => `inline-flex h-9 items-center rounded-full px-3.5 text-[13.5px] font-semibold transition duration-200 active:scale-95 ${on ? "bg-ink text-bg" : "bg-raised text-ink/80 hover:bg-ink/10"}`;
+  const round = "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-raised text-ink transition duration-200 hover:bg-ink/10 active:scale-90 disabled:opacity-35";
+  const nChapters = Object.keys(mockPlan).length;
 
   return (
-    <div className="space-y-8 pb-48 lg:pb-32">
-      <div><p className="eyebrow">Create session</p><h1 className="mt-1 text-4xl font-semibold">What do you want to do?</h1></div>
+    <div className="space-y-5 pb-48 lg:space-y-6 lg:pb-32">
+      <h1 className="text-[30px] font-extrabold leading-[44px] lg:text-[38px] lg:leading-tight">New session</h1>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {([["study", "Study mode", "See the correct answer and explanation right after each question. Best for learning.", BookOpenCheck],
-           ["exam", "Mock exam", "Build your own exam: how many questions from each chapter, and the time. Answers and explanations at the end.", GraduationCap]] as const).map(([id, title, text, Icon]) => (
-          <button key={id} onClick={() => setMode(id)} className={`card card-hover flex items-start gap-4 text-left ${mode === id ? "!border-brand shadow-glow" : ""}`}>
-            <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${mode === id ? "bg-brand text-white" : "bg-brand/10 text-brand"}`}><Icon className="h-6 w-6" /></span>
-            <span><span className="block font-display text-xl font-semibold">{title}</span><span className="mt-1 block text-sm text-muted">{text}</span></span>
-          </button>
-        ))}
+      <div>
+        <div className="relative flex rounded-[18px] bg-surface p-1 shadow-card lg:max-w-md" role="group" aria-label="Session type">
+          <span aria-hidden className={`absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-[14px] bg-ink transition-transform duration-500 [transition-timing-function:cubic-bezier(.3,1.3,.5,1)] ${mode === "exam" ? "translate-x-full" : ""}`} />
+          {([["study", "Study", BookOpenCheck], ["exam", "Mock exam", Timer]] as const).map(([id, title, Icon]) => (
+            <button key={id} onClick={() => setMode(id)} aria-pressed={mode === id} data-testid={`mode-${id}`}
+              className={`relative flex h-11 flex-1 items-center justify-center gap-2 text-[15px] font-semibold transition-colors duration-300 ${mode === id ? "text-bg" : "text-muted"}`}><Icon className="h-[18px] w-[18px]" />{title}</button>
+          ))}
+        </div>
+        <p className="mt-3 min-h-[38px] px-1 text-[13.5px] leading-snug text-muted lg:min-h-0">{mode === "exam" ? "Timed, like the real exam. Answers and explanations come at the end. Pass mark 60%." : "See the correct answer and the explanation right after each question. No timer."}</p>
       </div>
 
-      {mode && (
-        <div className="animate-rise space-y-8">
+      <div key={mode} className="animate-rise space-y-5 lg:space-y-6">
           {mode === "exam" && (
-            <section data-testid="mock-chapters">
-              <h2 className={sectionTitle}>Start from</h2>
-              <div className="mb-6 grid grid-cols-3 gap-2.5" data-testid="mock-presets">
-                {[...PRESETS.map((pr) => ({ id: pr.id, top: `${pr.q} questions`, sub: `${pr.min} min`, on: () => applyPreset(pr) })), { id: "custom", top: "Custom", sub: "Your own mix", on: () => setPreset("custom") }].map((b) => (
-                  <button key={b.id} onClick={b.on} className={`flex h-16 flex-col items-center justify-center rounded-2xl border transition ${preset === b.id ? "border-brand bg-brand text-white shadow-glow" : "border-line bg-surface text-ink hover:border-brand/50"}`}>
-                    <span className="text-sm font-bold">{b.top}</span><span className={`text-xs ${preset === b.id ? "text-white/80" : "text-muted"}`}>{b.sub}</span>
-                  </button>
-                ))}
+            <section data-testid="mock-chapters" className="space-y-5 lg:space-y-6">
+              <div>
+                <p className={label}>Exam size</p>
+                <div className="grid grid-cols-3 gap-2.5 lg:max-w-xl" data-testid="mock-presets">
+                  {[...PRESETS.map((pr) => ({ id: pr.id as string, big: String(pr.q), l1: "questions", l2: `${pr.min} minutes`, on: () => applyPreset(pr) })), { id: "custom", big: "", l1: "Custom", l2: "Your own mix", on: () => setPreset("custom") }].map((b) => (
+                    <button key={b.id} onClick={b.on} aria-pressed={preset === b.id}
+                      className={`rounded-[20px] border-[1.5px] px-3.5 py-3.5 text-left transition duration-200 active:scale-[.97] ${preset === b.id ? "border-mint bg-mint/15" : "border-transparent bg-surface shadow-card"}`}>
+                      <span className="flex h-[26px] items-center font-display text-[26px] font-extrabold leading-none">{b.big || <SlidersHorizontal className="h-[22px] w-[22px]" />}</span>
+                      <span className="mt-2 block text-[13px] font-semibold">{b.l1}</span><span className="block truncate text-[12.5px] text-muted">{b.l2}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <h2 className={sectionTitle}>Questions per chapter</h2>
-              <div className="space-y-4">
+              <div>
+                <p className={label}>Questions per chapter</p>
+                <div className="space-y-3">
                 {tree.subjects.map((sub) => {
                   const subTotal = sub.chapters.reduce((s, c) => s + (mockPlan[c.id] ?? 0), 0);
                   return (
-                    <div key={sub.id} className="card !p-0">
-                      <div className="flex flex-wrap items-center gap-2 border-b border-line p-4">
-                        <span className="font-display text-lg font-semibold">{sub.name}</span>
-                        {subTotal > 0 && <span className="chip !text-brand">{subTotal} Q</span>}
-                        <span className="ml-auto flex flex-wrap items-center gap-1.5 text-xs text-muted">Spread evenly:
-                          {[10, 20, 40, 50].map((n) => <button key={n} onClick={() => { setPreset("custom"); spread(sub.chapters, n); }} className="chip hover:text-ink">{n}</button>)}
-                          {subTotal > 0 && <button onClick={() => { setPreset("custom"); spread(sub.chapters, 0); }} className="chip hover:text-ink">Clear</button>}
+                    <div key={sub.id} className="card overflow-hidden !p-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-2.5 border-b border-line px-[18px] py-3.5">
+                        <span className="font-display text-[17px] font-bold">{sub.name}</span>
+                        {subTotal > 0 && <span className="rounded-full bg-mint/15 px-2.5 py-1 text-xs font-bold text-brand">{subTotal} Q</span>}
+                        <span className="ml-auto flex flex-wrap items-center gap-1.5 text-xs text-muted">Spread evenly
+                          {[10, 20, 40, 50].map((n) => <button key={n} onClick={() => { setPreset("custom"); spread(sub.chapters, n); }} className="grid h-8 min-w-9 place-items-center rounded-full bg-raised px-2.5 text-xs font-semibold text-ink/80 transition hover:bg-ink/10 active:scale-95">{n}</button>)}
+                          {subTotal > 0 && <button onClick={() => { setPreset("custom"); spread(sub.chapters, 0); }} className="grid h-8 place-items-center rounded-full bg-raised px-2.5 text-xs font-semibold text-ink/80 transition hover:bg-ink/10 active:scale-95">Clear</button>}
                         </span>
                       </div>
                       <div className="divide-y divide-line">
                         {sub.chapters.map((ch) => {
                           const cap = chAvail(ch), n = Math.min(perCh[ch.id] ?? 0, cap);
                           return (
-                            <div key={ch.id} className="flex items-center gap-3 px-4 py-2.5" data-testid={`mock-ch-${ch.name}`}>
+                            <div key={ch.id} className="flex items-center gap-2.5 py-2.5 pl-[18px] pr-3.5" data-testid={`mock-ch-${ch.name}`}>
                               <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-medium">{ch.name}</div>
-                                <div className="text-xs text-muted">{cap} available</div>
+                                <div className="truncate text-[15px] font-semibold">{ch.name}</div>
+                                <div className="text-[12.5px] text-muted">{cap} available</div>
                               </div>
-                              <button aria-label={`Fewer from ${ch.name}`} disabled={n <= 0} onClick={() => bump(ch.id, -1, cap)} className="btn-ghost h-10 w-10 shrink-0 !p-0"><Minus className="h-4 w-4" /></button>
+                              <button aria-label={`Fewer from ${ch.name}`} disabled={n <= 0} onClick={() => bump(ch.id, -1, cap)} className={round}><Minus className="h-4 w-4" strokeWidth={2.4} /></button>
                               <input aria-label={`Questions from ${ch.name}`} inputMode="numeric" value={n} onChange={(e) => { setPreset("custom"); setPerCh((p) => ({ ...p, [ch.id]: Math.max(0, Math.min(cap, Number(e.target.value.replace(/\D/g, "")) || 0)) })); }}
-                                className={`input !h-10 !w-14 !px-1 text-center text-base font-bold tabular-nums ${n ? "" : "text-muted"}`} />
-                              <button aria-label={`More from ${ch.name}`} disabled={n >= cap} onClick={() => bump(ch.id, 1, cap)} className="btn-ghost h-10 w-10 shrink-0 !p-0"><Plus className="h-4 w-4" /></button>
+                                className={`h-10 w-11 rounded-xl bg-transparent text-center font-display text-lg font-extrabold tabular-nums outline-none transition focus:bg-raised ${n ? "" : "text-muted"}`} />
+                              <button aria-label={`More from ${ch.name}`} disabled={n >= cap} onClick={() => bump(ch.id, 1, cap)} className={round}><Plus className="h-4 w-4" strokeWidth={2.4} /></button>
                             </div>
                           );
                         })}
@@ -186,36 +198,37 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
                     </div>
                   );
                 })}
+                </div>
               </div>
             </section>
           )}
           {mode === "study" && <section>
-            <h2 className={sectionTitle}>Chapters and topics</h2>
-            <div className="space-y-4">
+            <p className={label}>Chapters and topics</p>
+            <div className="space-y-3">
               {tree.subjects.map((sub) => {
                 const subIds = sub.chapters.flatMap((c) => c.topics.map((t) => t.id));
                 const st = stateOf(subIds);
                 return (
-                  <div key={sub.id} className="card !p-0">
-                    <button className="flex w-full items-center gap-3 border-b border-line p-4 text-left" onClick={() => toggleTopics(subIds, st !== "all")}>
-                      <Box state={st} /><span className="font-display text-lg font-semibold">{sub.name}</span>
-                      <span className="ml-auto text-xs text-muted">{subIds.reduce((s, id) => s + topicAvail(id), 0)} available</span>
+                  <div key={sub.id} className="card overflow-hidden !p-0">
+                    <button className="flex w-full items-center gap-3 border-b border-line px-[18px] py-3.5 text-left" onClick={() => toggleTopics(subIds, st !== "all")}>
+                      <Box state={st} /><span className="font-display text-[17px] font-bold">{sub.name}</span>
+                      <span className="ml-auto text-[12.5px] text-muted">{subIds.reduce((s, id) => s + topicAvail(id), 0)} available</span>
                     </button>
                     <div className="divide-y divide-line">
                       {sub.chapters.map((ch) => {
                         const ids = ch.topics.map((t) => t.id), cs = stateOf(ids), isOpen = open.has(ch.id);
                         return (
                           <div key={ch.id}>
-                            <div className="flex items-center gap-3 px-4 py-3">
-                              <button onClick={() => toggleTopics(ids, cs !== "all")} className="flex flex-1 items-center gap-3 text-left"><Box state={cs} /><span className="text-sm font-medium">{ch.name}</span></button>
-                              <span className="text-xs text-muted">{ids.reduce((s, id) => s + topicAvail(id), 0)}</span>
-                              <button aria-label="Show topics" onClick={() => toggleSet(open, ch.id, setOpen)} className="grid h-7 w-7 place-items-center rounded-lg text-muted hover:bg-raised"><ChevronDown className={`h-4 w-4 transition ${isOpen ? "rotate-180" : ""}`} /></button>
+                            <div className="flex min-h-[52px] items-center gap-2 pl-[18px] pr-2.5">
+                              <button onClick={() => toggleTopics(ids, cs !== "all")} className="flex min-h-[52px] flex-1 items-center gap-3 text-left"><Box state={cs} /><span className="text-[15px] font-semibold">{ch.name}</span></button>
+                              <span className="text-[12.5px] tabular-nums text-muted">{ids.reduce((s, id) => s + topicAvail(id), 0)}</span>
+                              <button aria-label="Show topics" aria-expanded={isOpen} onClick={() => toggleSet(open, ch.id, setOpen)} className="grid h-9 w-9 place-items-center rounded-full text-muted transition hover:bg-raised hover:text-ink"><ChevronDown className={`h-[18px] w-[18px] transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} /></button>
                             </div>
                             {isOpen && (
-                              <div className="animate-reveal space-y-0.5 bg-raised/40 px-4 py-2 pl-12">
+                              <div className="animate-reveal space-y-0.5 bg-ink/[.035] py-1.5 pl-11 pr-3">
                                 {ch.topics.map((tp) => (
-                                  <button key={tp.id} onClick={() => toggleTopics([tp.id], !selected.has(tp.id))} className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-raised">
-                                    <Box state={selected.has(tp.id) ? "all" : "none"} /><span className="text-sm">{tp.name}</span><span className="ml-auto text-xs text-muted">{topicAvail(tp.id)}</span>
+                                  <button key={tp.id} onClick={() => toggleTopics([tp.id], !selected.has(tp.id))} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-2 text-left transition hover:bg-ink/[.05]">
+                                    <Box state={selected.has(tp.id) ? "all" : "none"} /><span className="text-sm">{tp.name}</span><span className="ml-auto text-[12.5px] tabular-nums text-muted">{topicAvail(tp.id)}</span>
                                   </button>
                                 ))}
                               </div>
@@ -230,16 +243,16 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
             </div>
           </section>}
 
-          <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="card space-y-5">
+          <section className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-5">
+            <div className="card space-y-6">
               <div>
-                <h2 className={sectionTitle}>Question pool</h2>
+                <p className="eyebrow mb-2.5">Which questions</p>
                 <div className="flex flex-wrap gap-2">
-                  {POOLS.map((p) => <button key={p.id} onClick={() => setPool(p.id)} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${pool === p.id ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`}>{p.label}</button>)}
+                  {POOLS.map((p) => <button key={p.id} onClick={() => setPool(p.id)} aria-pressed={pool === p.id} className={chip(pool === p.id)}>{p.label}</button>)}
                 </div>
               </div>
               <div data-testid="exam-filter">
-                <h2 className={sectionTitle}>Exams and years</h2>
+                <p className="eyebrow mb-2.5">Exams and years</p>
                 {scope.size === 0 ? (
                   <p className="text-sm text-muted">Choose chapters above, then narrow them to the exams their questions came from.</p>
                 ) : groups.length === 0 ? (
@@ -247,18 +260,17 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
                 ) : (
                   <div className="space-y-4">
                     {groups.map((g) => {
-                      const chip = (on: boolean) => `rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${on ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:text-ink"}`;
                       const none = !wantBySubject.has(g.id);
                       return (
                         <div key={g.id} data-testid={`exam-group-${g.name}`}>
                           {groups.length > 1 && <p className="mb-2 text-sm font-semibold">{g.name}</p>}
                           <div className="flex flex-wrap gap-2">
-                            <button onClick={() => clearSubject(g.id)} className={chip(none)}>All</button>
+                            <button onClick={() => clearSubject(g.id)} aria-pressed={none} className={chip(none)}>All</button>
                             {g.tags.map(({ t, n }) => {
                               const k = `${g.id}::${t}`;
-                              return <button key={k} onClick={() => toggleSet(tagSel, k, setTagSel)} className={chip(active.has(k))}>{t} <span className="ml-1 opacity-60">{n}</span></button>;
+                              return <button key={k} onClick={() => toggleSet(tagSel, k, setTagSel)} aria-pressed={active.has(k)} className={chip(active.has(k))}>{t} <span className="ml-1.5 font-medium opacity-60">{n}</span></button>;
                             })}
-                            {g.none > 0 && <button onClick={() => toggleSet(tagSel, `${g.id}::__none`, setTagSel)} className={chip(active.has(`${g.id}::__none`))}>No tag <span className="ml-1 opacity-60">{g.none}</span></button>}
+                            {g.none > 0 && <button onClick={() => toggleSet(tagSel, `${g.id}::__none`, setTagSel)} aria-pressed={active.has(`${g.id}::__none`)} className={chip(active.has(`${g.id}::__none`))}>No tag <span className="ml-1.5 font-medium opacity-60">{g.none}</span></button>}
                           </div>
                         </div>
                       );
@@ -271,56 +283,57 @@ export default function NewSessionForm({ tree, counts, initialTopics = [], initi
 
             {mode === "exam" && (
               <div className="card space-y-4" data-testid="mock-time">
-                <h2 className={sectionTitle}><Timer className="h-5 w-5 text-muted" />Time</h2>
+                <p className="eyebrow">Time</p>
                 <div className="grid grid-cols-5 gap-2">
-                  {[20, 30, 45, 60, 90].map((m) => <button key={m} onClick={() => { setMockMin(m); setPreset("custom"); }} className={`h-11 rounded-xl border text-sm font-semibold transition ${mockMin === m ? "border-brand bg-brand text-white" : "border-line text-muted hover:text-ink"}`}>{m}m</button>)}
+                  {[20, 30, 45, 60, 90].map((m) => <button key={m} onClick={() => { setMockMin(m); setPreset("custom"); }} aria-pressed={mockMin === m} className={`h-11 rounded-full text-sm font-semibold transition duration-200 active:scale-95 ${mockMin === m ? "bg-ink text-bg" : "bg-raised text-ink/80 hover:bg-ink/10"}`}>{m}m</button>)}
                 </div>
                 <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-muted" />
-                  <input type="number" min={1} max={360} value={mockMin} onChange={(e) => { setMockMin(Math.max(1, Math.min(360, Number(e.target.value) || 1))); setPreset("custom"); }} className="input !w-24 text-center" />
+                  <Clock className="h-4 w-4 shrink-0 text-muted" />
+                  <input type="number" min={1} max={360} value={mockMin} aria-label="Minutes" onChange={(e) => { setMockMin(Math.max(1, Math.min(360, Number(e.target.value) || 1))); setPreset("custom"); }} className="input !w-20 !px-2 text-center font-semibold" />
                   <span className="text-sm text-muted">minutes{mockTotal > 0 && (() => { const s = Math.round((mockMin * 60) / mockTotal); return ` · about ${s >= 60 ? `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ""}` : `${s} s`} per question`; })()}</span>
                 </div>
-                <p className="text-xs text-muted">Questions are shuffled across chapters. Cases and EMQs stay together, so a chapter can get one or two extra questions.</p>
+                <p className="text-xs leading-relaxed text-muted">Questions are shuffled across chapters. Cases and EMQs stay together, so a chapter can get one or two extra questions.</p>
               </div>
             )}
             {mode === "study" && <div className="card space-y-5">
               <div>
-                <h2 className={sectionTitle}>Number of questions</h2>
-                <div className="flex items-center gap-4">
-                  <input type="range" min={1} max={Math.max(1, Math.min(available, MAX))} value={Math.max(1, effective)} disabled={available === 0}
-                    onChange={(e) => setCount(Number(e.target.value))} className="h-2 flex-1 cursor-pointer accent-[rgb(var(--brand))]" />
-                  <input type="number" min={1} max={MAX} value={count} onChange={(e) => setCount(Number(e.target.value))} className="input !w-20 text-center" />
+                <p className="eyebrow mb-2.5">How many</p>
+                <div className="flex items-center justify-between rounded-[22px] bg-raised p-2.5">
+                  <button aria-label="Fewer questions" disabled={effective <= 1} onClick={() => setCount(Math.max(1, effective - 5))} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-surface text-ink shadow-card transition duration-200 active:scale-90 disabled:opacity-35"><Minus className="h-5 w-5" strokeWidth={2.4} /></button>
+                  <div className="text-center">
+                    <input type="number" min={1} max={MAX} value={count} aria-label="Number of questions" onChange={(e) => setCount(Number(e.target.value))}
+                      className="w-24 bg-transparent text-center font-display text-[38px] font-extrabold leading-none tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                    <div className="mt-1 text-[12.5px] text-muted">{available === 0 ? "choose chapters first" : effective < count ? `only ${effective} available` : "questions"}</div>
+                  </div>
+                  <button aria-label="More questions" disabled={effective >= Math.min(available, MAX)} onClick={() => setCount(Math.min(Math.min(available, MAX), effective + 5))} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-surface text-ink shadow-card transition duration-200 active:scale-90 disabled:opacity-35"><Plus className="h-5 w-5" strokeWidth={2.4} /></button>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {[10, 20, 40, 100].map((n) => <button key={n} onClick={() => setCount(n)} className="chip hover:text-ink">{n}</button>)}
-                  <button onClick={() => setCount(Math.min(available, MAX))} className="chip hover:text-ink">All ({Math.min(available, MAX)})</button>
+                <div className="mt-2.5 grid grid-cols-4 gap-2">
+                  {[10, 20, 40].map((n) => <button key={n} onClick={() => setCount(n)} aria-pressed={count === n} className={`${chip(count === n)} justify-center !px-0`}>{n}</button>)}
+                  <button onClick={() => setCount(Math.min(available, MAX))} aria-pressed={available > 0 && count === Math.min(available, MAX)} className={`${chip(available > 0 && count === Math.min(available, MAX))} justify-center !px-0`}>All {Math.min(available, MAX)}</button>
                 </div>
               </div>
-              <button onClick={() => setRandomize((r) => !r)} className="flex w-full items-center gap-3 text-left">
+              <button onClick={() => setRandomize((r) => !r)} role="switch" aria-checked={randomize} className="flex w-full items-center gap-3 text-left">
                 <Shuffle className="h-4 w-4 text-muted" /><span className="flex-1 text-sm font-medium">Randomize question order</span>
-                <span className={`relative h-6 w-11 rounded-full transition ${randomize ? "bg-brand" : "bg-raised"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${randomize ? "left-[22px]" : "left-0.5"}`} /></span>
+                <span className={`relative h-7 w-12 rounded-full transition-colors duration-300 ${randomize ? "bg-mint" : "bg-ink/15"}`}><span className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-300 [transition-timing-function:cubic-bezier(.3,1.3,.5,1)] ${randomize ? "translate-x-5" : ""}`} /></span>
               </button>
             </div>}
           </section>
-        </div>
-      )}
+      </div>
 
-      {mode && (
-        <div className="fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom),16px)+80px)] z-20 px-4 lg:bottom-4 lg:left-64">
-          <div className="mx-auto flex max-w-3xl items-center gap-4 glass-float !rounded-2xl p-3 pl-5">
-            <div className="min-w-0 flex-1 text-sm">
-              {mode === "exam" ? <>
-                <div className="font-semibold" data-testid="mock-summary">{mockTotal} question{mockTotal === 1 ? "" : "s"} · Mock exam · {mockMin} min</div>
-                <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : mockTotal === 0 ? "Add questions from the chapters above" : `From ${Object.keys(mockPlan).length} chapter${Object.keys(mockPlan).length === 1 ? "" : "s"}`}</div>
-              </> : <>
-                <div className="font-semibold">{effective} question{effective === 1 ? "" : "s"} · Study mode</div>
-                <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : selected.size === 0 ? "Select chapters or topics above" : `${available} available in your selection`}</div>
-              </>}
-            </div>
-            <button className="btn !px-5 !py-3" disabled={pending || (mode === "exam" ? mockTotal === 0 : effective === 0)} onClick={go}><Play className="h-4 w-4" />{pending ? "Creating…" : "Start"}</button>
+      <div className="fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom),16px)+78px)] z-20 px-4 lg:bottom-5 lg:left-[268px]">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-[26px] border border-ink/10 bg-[rgb(var(--glass)/var(--float-a))] p-2.5 pl-5 shadow-[0_18px_44px_rgb(0_0_0/.3)] backdrop-blur-2xl">
+          <div className="min-w-0 flex-1 text-sm">
+            {mode === "exam" ? <>
+              <div className="truncate font-semibold" data-testid="mock-summary">{mockTotal} question{mockTotal === 1 ? "" : "s"} · {mockMin} min</div>
+              <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : mockTotal === 0 ? "Add questions from the chapters above" : `Mock exam from ${nChapters} chapter${nChapters === 1 ? "" : "s"}`}</div>
+            </> : <>
+              <div className="truncate font-semibold">{effective} question{effective === 1 ? "" : "s"} · Study</div>
+              <div className="truncate text-xs text-muted">{error ? <span className="text-bad">{error}</span> : selected.size === 0 ? "Choose chapters or topics above" : `${available} available in your selection`}</div>
+            </>}
           </div>
+          <button className="btn h-12 shrink-0 !px-6 text-[15px]" disabled={pending || (mode === "exam" ? mockTotal === 0 : effective === 0)} onClick={go} data-testid="start-session">{pending ? "Creating…" : "Start"}{!pending && <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.4} />}</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

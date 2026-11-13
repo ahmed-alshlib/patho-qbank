@@ -12,7 +12,7 @@ export default async function Summaries() {
   const groups = await listSummaryGroups(user.id);
   return (
     <div className="space-y-10">
-      <div><p className="eyebrow">Study notes</p><h1 className="mt-1 text-4xl font-semibold">Summaries</h1></div>
+      <div><p className="eyebrow">Study notes</p><h1 className="mt-1 text-[30px] font-extrabold leading-tight lg:text-[38px]">Summaries</h1></div>
       {groups.length === 0 && <EmptyState icon={<FileText className="h-6 w-6" />} title="No summaries yet" text="Chapter summaries will appear here once they are added." />}
       {groups.map((g) => (
         <section key={g.subjectId} className="space-y-4">

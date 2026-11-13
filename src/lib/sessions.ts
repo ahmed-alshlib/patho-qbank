@@ -64,7 +64,7 @@ export async function listSessions(userId: string, limit = 100): Promise<Session
 export type ResultItem = {
   id: string; position: number; text: string; explanation: string; tags: string[];
   subjectId: string; subject: string; chapterId: string; chapter: string; topicId: string; topic: string;
-  choices: { id: string; label: string; text: string; isCorrect: boolean }[];
+  choices: { id: string; label: string; text: string; isCorrect: boolean; note: string }[];
   chosenId: string | null; status: "correct" | "incorrect" | "unanswered";
   peers: { pct: number; n: number } | null;
   /** The case, EMQ or true/false block this question came from, so the review shows it in context. */
@@ -97,7 +97,7 @@ export async function getResults(userId: string, testId: string) {
     return {
       id: x.q.id, position: x.position, text: x.q.questionText, explanation: x.q.explanation, tags: parseTags(x.q.tags),
       subjectId: x.subjectId, subject: x.subject, chapterId: x.chapterId, chapter: x.chapter, topicId: x.topicId, topic: x.topic,
-      choices: choices.filter((c) => c.questionId === x.q.id).map((c) => ({ id: c.id, label: c.label, text: c.text, isCorrect: c.isCorrect })),
+      choices: choices.filter((c) => c.questionId === x.q.id).map((c) => ({ id: c.id, label: c.label, text: c.text, isCorrect: c.isCorrect, note: c.note })),
       chosenId: a?.choiceId ?? null, status: !a ? "unanswered" : a.isCorrect ? "correct" : "incorrect",
       peers: peers.get(x.q.id) ?? null,
       group: g ? { kind: g.kind, title: g.title, body: g.body } : null,

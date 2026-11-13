@@ -16,7 +16,7 @@ import { getLiveAnnouncements } from "@/lib/announcements";
 
 function Brand() {
   return (
-    <div className="flex items-center"><Logo className="h-7" /></div>
+    <div className="flex items-center"><Logo className="h-[22px] lg:h-6" /></div>
   );
 }
 
@@ -31,30 +31,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen lg:flex">
       <AnalyticsIdentify userId={user.id} />
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 border-r border-line bg-[rgb(var(--glass)/.62)] p-5 backdrop-blur-2xl backdrop-saturate-150 lg:flex">
-        <Brand />
-        <Link href="/session/new" className="btn !py-3"><Plus className="h-4 w-4" />New session</Link>
-        <nav className="flex flex-col gap-1"><NavLinks variant="side" badges={badges} /></nav>
-        <div className="mt-auto space-y-3 rounded-2xl border border-line bg-surface p-3">
+      <aside className="sticky top-4 z-20 my-4 ml-4 hidden h-[calc(100vh-2rem)] w-[252px] shrink-0 flex-col rounded-[28px] bg-surface p-3.5 pt-6 shadow-card lg:flex">
+        <div className="px-3"><Brand /></div>
+        <Link href="/session/new" className="btn mt-7 h-12 shrink-0 text-[15px]"><Plus className="h-[19px] w-[19px]" strokeWidth={2.6} />New session</Link>
+        <nav className="mt-5 flex min-h-0 flex-col gap-0.5 overflow-y-auto"><NavLinks variant="side" badges={badges} /></nav>
+        <div className="mt-auto space-y-2.5 rounded-[20px] bg-raised p-2.5">
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-brand2 text-sm font-bold text-white">{initials}</span>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-mint font-display text-sm font-extrabold text-onmint">{initials}</span>
             <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{user.name}</div><div className="truncate text-xs text-muted">{user.email}</div></div>
           </div>
           <div className="flex gap-2">
-            <ThemeToggle className="flex-1" />
-            <form action={logout} className="flex-1"><button className="btn-ghost w-full !py-2.5 text-xs" aria-label="Log out"><LogOut className="h-4 w-4" />Log out</button></form>
+            <ThemeToggle label className="flex-1 !bg-surface !px-2" />
+            <form action={logout} className="flex-1"><button className="btn-ghost w-full whitespace-nowrap !bg-surface !px-2 !py-2.5 text-xs" aria-label="Log out"><LogOut className="h-4 w-4 shrink-0" />Log out</button></form>
           </div>
         </div>
       </aside>
 
       <HideInSession>
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-[rgb(var(--glass)/.7)] px-4 py-3 backdrop-blur-xl lg:hidden">
+        <header className="flex items-center justify-between px-5 pb-1 pt-3.5 lg:hidden">
           <Brand />
-          <div className="flex gap-2"><MobileMenu badges={badges} /><ThemeToggle /><form action={logout}><button className="btn-ghost !p-2.5" aria-label="Log out"><LogOut className="h-4 w-4" /></button></form></div>
+          <MobileMenu badges={badges} initials={initials} name={user.name} email={user.email}>
+            <ThemeToggle label className="flex-1" />
+            <form action={logout} className="flex-1"><button className="btn-ghost w-full !py-2.5 text-xs"><LogOut className="h-4 w-4" />Log out</button></form>
+          </MobileMenu>
         </header>
       </HideInSession>
 
-      <main className="min-w-0 flex-1 px-4 py-5 pb-32 lg:px-10 lg:py-10 lg:pb-10"><div className="mx-auto max-w-5xl">
+      <main className="min-w-0 flex-1 px-5 pb-32 pt-3 lg:px-10 lg:pb-10 lg:pt-9"><div className="mx-auto max-w-5xl">
         <AnnouncementBanner items={live} />
         <InstallPrompt />
         {notices.map((n) => (
@@ -67,7 +70,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}</div></main>
 
       <HideInSession>
-        <nav aria-label="Main" className="fixed inset-x-4 bottom-[max(env(safe-area-inset-bottom),16px)] z-30 mx-auto flex h-[68px] max-w-md items-center gap-1 rounded-[34px] border border-ink/10 bg-[rgb(var(--glass)/.55)] p-1.5 shadow-[0_18px_40px_rgb(0_0_0/.28),inset_0_1px_0_rgb(255_255_255/.12)] backdrop-blur-2xl backdrop-saturate-150 lg:hidden">
+        <nav aria-label="Main" className="fixed inset-x-4 bottom-[max(env(safe-area-inset-bottom),16px)] z-30 mx-auto flex h-[66px] max-w-md items-center rounded-[33px] border border-ink/10 bg-[rgb(var(--glass)/var(--glass-a))] p-1.5 shadow-[0_18px_44px_rgb(0_0_0/.3)] backdrop-blur-2xl backdrop-saturate-150 lg:hidden">
           <NavLinks variant="bottom" badges={badges} />
         </nav>
       </HideInSession>

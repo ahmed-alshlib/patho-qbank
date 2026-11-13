@@ -95,6 +95,8 @@ export const answerChoices = pgTable("answer_choices", {
   label: text("label").notNull(), // A, B, C, D, E
   text: text("text").notNull(),
   isCorrect: boolean("is_correct").notNull().default(false),
+  /** Optional one-line reason shown after answering ("why not this one"). Empty = nothing shown. */
+  note: text("note").notNull().default(""),
 });
 
 // ---------- Student activity (kept separate from content) ----------

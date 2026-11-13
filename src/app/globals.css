@@ -3,28 +3,32 @@
 @tailwind utilities;
 
 /* Design tokens. Colours are RGB triplets so Tailwind can apply opacity. */
-/* Green theme built from the Rakeez logo (#1EC66F on deep green). */
+/* Calm neutral surfaces; the Rakeez green (--mint) is kept for the main action and correct answers. */
 :root {
-  --bg: 255 255 255; --surface: 255 255 255; --raised: 240 247 243; --line: 218 232 223;
-  --ink: 12 31 20; --muted: 87 110 97;
-  --brand: 14 140 76; --brand2: 16 168 120;
-  --good: 22 150 80; --bad: 220 38 38; --warn: 202 138 4; --shadow: 14 70 40;
-  --glass: 255 255 255; --glass-a: .78; --float-a: .9; --on-brand: 255 255 255;
+  --bg: 242 245 243; --surface: 255 255 255; --raised: 235 240 236; --line: 224 231 226;
+  --ink: 14 26 20; --muted: 90 105 97;
+  --brand: 10 122 67; --brand2: 10 122 67; --mint: 30 198 111; --on-mint: 4 32 15;
+  --good: 10 122 67; --bad: 194 55 43; --warn: 138 88 0; --info: 27 106 181; --amber: 245 166 35;
+  --shadow: 16 40 28; --glass: 255 255 255; --glass-a: .76; --float-a: .94;
+  --card-shadow: 0 1px 2px rgb(16 40 28 / .04), 0 12px 30px -16px rgb(16 40 28 / .16);
+  --glow: .16;
 }
 .dark {
-  --bg: 2 24 8; --surface: 7 38 17; --raised: 12 52 26; --line: 24 70 40;
-  --ink: 236 249 241; --muted: 146 186 160;
-  --brand: 30 198 111; --brand2: 52 211 153;
-  --good: 74 222 128; --bad: 255 99 90; --warn: 250 204 21; --shadow: 0 0 0;
-  --glass: 6 34 15; --glass-a: .8; --float-a: .92;
+  --bg: 10 15 12; --surface: 19 26 22; --raised: 28 36 32; --line: 36 44 40;
+  --ink: 241 245 242; --muted: 147 160 153;
+  --brand: 74 222 148; --brand2: 74 222 148; --mint: 30 198 111; --on-mint: 4 32 15;
+  --good: 74 222 148; --bad: 255 142 127; --warn: 255 194 102; --info: 140 203 255; --amber: 255 190 85;
+  --shadow: 0 0 0; --glass: 24 32 28; --glass-a: .68; --float-a: .95;
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / .045);
+  --glow: .12;
 }
 
-/* Admin area: always light, frosted glass over the green photo background. */
+/* Admin area: unchanged in this update (always light, frosted glass over the green photo background). */
 .admin-light {
   --bg: 240 248 243; --surface: 255 255 255; --raised: 232 244 237; --line: 200 224 210;
   --ink: 10 32 20; --muted: 80 108 92;
-  --brand: 12 132 72; --brand2: 16 160 116;
-  --good: 22 150 80; --bad: 220 38 38; --warn: 202 138 4; --shadow: 14 70 40;
+  --brand: 12 132 72; --brand2: 16 160 116; --mint: 12 132 72; --on-mint: 255 255 255;
+  --good: 22 150 80; --bad: 220 38 38; --warn: 202 138 4; --info: 27 106 181; --amber: 202 138 4; --shadow: 14 70 40;
   --glass: 255 255 255; --glass-a: .58; --float-a: .9;
   color: rgb(var(--ink));
 }
@@ -35,41 +39,64 @@
   html, body { overflow-x: clip; max-width: 100%; }
   body { @apply bg-bg font-sans text-ink antialiased; font-feature-settings: "cv11", "ss03"; font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
   body {
-    background-image: radial-gradient(54rem 28rem at 88% -8%, rgb(var(--brand) / .08), transparent 62%),
-                      radial-gradient(44rem 26rem at -8% 6%, rgb(var(--brand2) / .06), transparent 62%);
+    background-image: radial-gradient(46rem 26rem at 18% -12%, rgb(var(--mint) / var(--glow)), transparent 68%);
     background-attachment: fixed;
   }
-  .dark body { background-color: #021808; background-image: radial-gradient(60rem 34rem at 92% -10%, rgb(var(--brand) / .14), transparent 62%), radial-gradient(52rem 32rem at -10% 8%, rgb(var(--brand2) / .09), transparent 64%), linear-gradient(160deg, #021808 0%, #03200C 50%, #04290F 100%); }
-  ::selection { background: rgb(var(--brand) / .28); }
-  h1, h2, h3 { @apply font-display; letter-spacing: -.022em; font-weight: 650; }
-  :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }
+  ::selection { background: rgb(var(--mint) / .3); }
+  h1, h2, h3 { @apply font-display; letter-spacing: -.022em; font-weight: 700; }
+  .admin-light h1, .admin-light h2, .admin-light h3, .admin-light .font-display { font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-weight: 650; }
+  :focus-visible { outline: 2px solid rgb(var(--mint)); outline-offset: 2px; }
   input:focus-visible, textarea:focus-visible { outline: none; }
-  .font-display { font-variant-numeric: tabular-nums; }
+  .font-display { font-variant-numeric: tabular-nums; letter-spacing: -.022em; }
 }
 
 @layer components {
-  /* Level 2: elevated glass. Falls back to a solid surface without backdrop-filter. */
-  .card { @apply rounded-[20px] border border-line p-5 transition-[transform,box-shadow,border-color] duration-200;
-    background: rgb(var(--surface)); box-shadow: 0 8px 32px rgb(var(--shadow) / .10), inset 0 1px 0 rgb(255 255 255 / .04); }
-  @supports (backdrop-filter: blur(1px)) {
-    .card { background: rgb(var(--glass) / var(--glass-a)); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); }
-  }
-  .card-hover { @apply hover:-translate-y-0.5 hover:border-brand/40; }
-  .card-hover:hover { box-shadow: 0 14px 40px rgb(var(--shadow) / .16), inset 0 1px 0 rgb(255 255 255 / .05); }
-  /* Level 1: opaque base, used behind question text and answers for contrast. */
-  .card-solid { background: rgb(var(--surface)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-  /* Level 3: floating (modals, popovers). */
-  .glass-float { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 22px; box-shadow: 0 24px 64px rgb(0 0 0 / .35), inset 0 1px 0 rgb(255 255 255 / .05); }
-  @supports (backdrop-filter: blur(1px)) { .glass-float { background: rgb(var(--glass) / var(--float-a)); -webkit-backdrop-filter: blur(32px) saturate(160%); backdrop-filter: blur(32px) saturate(160%); } }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:brightness-110 active:scale-[.985] disabled:cursor-not-allowed disabled:opacity-50;
-    background: linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand) / .86) 45%, rgb(var(--brand2))); box-shadow: 0 4px 14px rgb(var(--brand) / .28), inset 0 1px 0 rgb(255 255 255 / .22); }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm font-medium text-ink transition duration-200 hover:bg-raised active:scale-[.985] disabled:cursor-not-allowed disabled:opacity-40;
-    background: rgb(var(--glass) / .55); }
-  .input { @apply w-full rounded-xl border border-line px-3.5 py-2.5 text-sm outline-none transition placeholder:text-muted focus:border-brand focus:shadow-glow; background: rgb(var(--surface) / .8); }
+  /* Cards: soft tone-on-tone surfaces, no outline. The border stays (transparent) so pages can tint it. */
+  .card { @apply rounded-[24px] border border-transparent p-5 transition-[transform,box-shadow,border-color] duration-200;
+    background: rgb(var(--surface)); box-shadow: var(--card-shadow); }
+  .card-hover { @apply hover:-translate-y-0.5; }
+  .card-solid { background: rgb(var(--surface)); }
+  /* Floating layers (menus, popovers, sheets). */
+  .glass-float { background: rgb(var(--surface)); border: 1px solid rgb(var(--ink) / .08); border-radius: 28px; box-shadow: 0 24px 64px rgb(0 0 0 / .32); }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition duration-200 hover:brightness-105 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-45;
+    background: rgb(var(--mint)); color: rgb(var(--on-mint)); }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-4 py-2.5 text-sm font-semibold text-ink transition duration-200 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40;
+    background: rgb(var(--raised)); }
+  .btn-ghost:hover { background: rgb(var(--ink) / .1); }
+  .input { @apply w-full rounded-2xl border border-transparent px-4 py-3 text-sm outline-none transition placeholder:text-muted;
+    background: rgb(var(--raised)); }
+  .input:focus { border-color: rgb(var(--mint)); box-shadow: 0 0 0 4px rgb(var(--mint) / .16); }
   .chip { @apply inline-flex items-center gap-1 rounded-full bg-raised px-2.5 py-1 text-xs font-medium text-muted; }
-  .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[.12em] text-muted; }
-  .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition duration-200 hover:bg-raised/70 hover:text-ink; }
-  .nav-link[data-active="true"] { @apply text-brand; background: linear-gradient(135deg, rgb(var(--brand) / .16), rgb(var(--brand2) / .10)); box-shadow: inset 0 0 0 1px rgb(var(--brand) / .22); }
+  .eyebrow { @apply text-[12px] font-bold uppercase tracking-[.08em] text-muted; }
+  .nav-link { @apply flex h-11 items-center gap-3 rounded-[14px] px-3 text-[14.5px] font-semibold text-muted transition duration-200 hover:text-ink; }
+  .nav-link:hover, .nav-link[data-active="true"] { background: rgb(var(--ink) / .08); color: rgb(var(--ink)); }
+  /* Round icon button used in headers. */
+  .icon-btn { @apply grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink/80 transition duration-200 active:scale-95; background: rgb(var(--surface)); box-shadow: var(--card-shadow); }
+  .icon-btn:hover { color: rgb(var(--ink)); }
+  /* Pill filter: the chosen one is solid ink. */
+  .pill { @apply inline-flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13.5px] font-semibold transition duration-200 active:scale-95;
+    background: rgb(var(--surface)); color: rgb(var(--ink) / .8); box-shadow: var(--card-shadow); }
+  .pill[data-active="true"], .pill[aria-pressed="true"] { background: rgb(var(--ink)); color: rgb(var(--bg)); box-shadow: none; }
+}
+
+/* The admin area keeps its earlier component styles until its own redesign. */
+@layer components {
+  :where(.admin-light) .card { border-radius: 20px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); box-shadow: 0 8px 32px rgb(var(--shadow) / .10), inset 0 1px 0 rgb(255 255 255 / .04); }
+  @supports (backdrop-filter: blur(1px)) {
+    :where(.admin-light) .card { background: rgb(var(--glass) / var(--glass-a)); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); }
+  }
+  :where(.admin-light) .card-hover:hover { border-color: rgb(var(--brand) / .4); box-shadow: 0 14px 40px rgb(var(--shadow) / .16), inset 0 1px 0 rgb(255 255 255 / .05); }
+  :where(.admin-light) .card-solid { background: rgb(var(--surface)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  :where(.admin-light) .glass-float { border: 1px solid rgb(var(--line)); border-radius: 22px; box-shadow: 0 24px 64px rgb(0 0 0 / .35), inset 0 1px 0 rgb(255 255 255 / .05); }
+  :where(.admin-light) .btn { border-radius: 12px; font-weight: 600; color: #fff; background: linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand) / .86) 45%, rgb(var(--brand2))); box-shadow: 0 4px 14px rgb(var(--brand) / .28), inset 0 1px 0 rgb(255 255 255 / .22); }
+  :where(.admin-light) .btn-ghost { border-radius: 12px; font-weight: 500; border-color: rgb(var(--line)); background: rgb(var(--glass) / .55); }
+  :where(.admin-light) .btn-ghost:hover { background: rgb(var(--raised)); }
+  :where(.admin-light) .input { border-radius: 12px; padding: .625rem .875rem; border-color: rgb(var(--line)); background: rgb(var(--surface) / .8); }
+  :where(.admin-light) .input:focus { border-color: rgb(var(--brand)); box-shadow: 0 0 0 4px rgb(var(--brand) / .15); }
+  :where(.admin-light) .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .12em; }
+  :where(.admin-light) .nav-link { height: auto; padding: .625rem .75rem; border-radius: 12px; font-size: .875rem; font-weight: 500; }
+  :where(.admin-light) .nav-link:hover { background: rgb(var(--raised) / .7); color: rgb(var(--ink)); }
+  :where(.admin-light) .nav-link[data-active="true"] { color: rgb(var(--brand)); background: linear-gradient(135deg, rgb(var(--brand) / .16), rgb(var(--brand2) / .10)); box-shadow: inset 0 0 0 1px rgb(var(--brand) / .22); }
 }
 
 .hl { background: rgb(var(--warn) / .35); border-radius: 3px; cursor: pointer; transition: background .2s; }
@@ -81,7 +108,8 @@
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
 /* Question reading size (set by the A- / A+ buttons through --qs). */
-.qtext { font-size: calc(1.0625rem * var(--qs, 1)); }
-@media (min-width: 640px) { .qtext { font-size: calc(1.125rem * var(--qs, 1)); } }
-.qchoice { font-size: calc(.9375rem * var(--qs, 1)); }
-.qexp { font-size: calc(.875rem * var(--qs, 1)); white-space: pre-line; }
+.qtext { font-size: calc(1.09375rem * var(--qs, 1)); }
+@media (min-width: 640px) { .qtext { font-size: calc(1.1875rem * var(--qs, 1)); } }
+.qchoice { font-size: calc(.96875rem * var(--qs, 1)); }
+@media (min-width: 1024px) { .qchoice { font-size: calc(1.03125rem * var(--qs, 1)); } }
+.qexp { font-size: calc(.96875rem * var(--qs, 1)); white-space: pre-line; }

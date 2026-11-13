@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, answerChoices, bookmarks, chapters, questions, testQuestions, tests, topics, userAnswers } from "@/db";
 import { getUser } from "@/lib/auth";
-import { latestForQuestions, type Reveal } from "@/lib/questions";
+import { latestForQuestions, whyMap, type Reveal } from "@/lib/questions";
 import { peerStats } from "@/lib/peers";
 import { accessibleSubjectIds, assertQuestionAccess } from "@/lib/access";
 import { normalizeTag, parseTags } from "@/lib/tags";
@@ -148,7 +148,7 @@ export async function answerInSession(testId: string, questionId: string, choice
   if (t.mode === "exam") return null;
   const [q] = await db.select({ explanation: questions.explanation }).from(questions).where(eq(questions.id, questionId)).limit(1);
   const peers = (await peerStats([questionId])).get(questionId) ?? null;
-  return { choiceId, isCorrect: picked.isCorrect, correctChoiceIds: correct.map((c) => c.id), explanation: q.explanation, peers };
+  return { choiceId, isCorrect: picked.isCorrect, correctChoiceIds: correct.map((c) => c.id), explanation: q.explanation, peers, why: whyMap(choices) };
 }
 
 export async function finishSession(testId: string) {

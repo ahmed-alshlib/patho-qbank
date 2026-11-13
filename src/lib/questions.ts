@@ -6,7 +6,16 @@ import { parseTags } from "@/lib/tags";
 import { peerStats, type Peer } from "@/lib/peers";
 
 /** A paper may accept more than one option ("G,S"), so the right answer is a list. */
-export type Reveal = { choiceId: string; isCorrect: boolean; correctChoiceIds: string[]; explanation: string; peers?: Peer | null };
+export type Reveal = {
+  choiceId: string; isCorrect: boolean; correctChoiceIds: string[]; explanation: string; peers?: Peer | null;
+  /** "Why not this one" lines by choice id. Only sent once the student has answered. */
+  why?: Record<string, string>;
+};
+/** The written "why" lines of a question's choices, or undefined when it has none. */
+export function whyMap(cs: { id: string; note: string }[]): Record<string, string> | undefined {
+  const m = Object.fromEntries(cs.filter((c) => c.note?.trim()).map((c) => [c.id, c.note.trim()]));
+  return Object.keys(m).length ? m : undefined;
+}
 export type Hl = { id: string; target: "question" | "explanation"; start: number; end: number };
 /** The block a question belongs to, with its position among the questions of that block in THIS session. */
 export type QGroup = {
@@ -103,7 +112,7 @@ export async function loadStudyQuestions(userId: string, opts: { chapterId?: str
         options: g.kind === "emq" ? cs.map((c) => ({ label: c.label, text: c.text })) : [],
       } : null,
       // Correct answers/explanations are only sent for questions the student has already answered (never in exams).
-      previous: prev && !opts.exam ? { choiceId: prev.choiceId!, isCorrect: prev.isCorrect, correctChoiceIds: cs.filter((c) => c.isCorrect).map((c) => c.id), explanation: r.q.explanation, peers: peers.get(r.q.id) ?? null } : null,
+      previous: prev && !opts.exam ? { choiceId: prev.choiceId!, isCorrect: prev.isCorrect, correctChoiceIds: cs.filter((c) => c.isCorrect).map((c) => c.id), explanation: r.q.explanation, peers: peers.get(r.q.id) ?? null, why: whyMap(cs) } : null,
       selected: opts.exam ? prev?.choiceId ?? null : null,
       bookmarked: bmSet.has(r.q.id),
       note: nts.find((n) => n.questionId === r.q.id)?.body ?? "",

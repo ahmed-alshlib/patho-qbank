@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CheckCircle2, CircleHelp, Clock, RotateCcw, XCircle, Plus, TrendingDown, TrendingUp, Target } from "lucide-react";
+import { ChevronRight, Clock, RotateCcw, Plus, TrendingDown, TrendingUp, Target } from "lucide-react";
 import { getUser, requireUser } from "@/lib/auth";
 import { getResults } from "@/lib/sessions";
 import { eq, sql } from "drizzle-orm";
@@ -80,85 +80,88 @@ export default async function Results({ params }: { params: Promise<{ testId: st
   }
   const passed = score >= PASS_MARK;
 
-  return (
-    <div className="space-y-6">
-      <div className="stagger space-y-6">
-        <div>
-          <p className="eyebrow">{mock ? "Mock exam results" : `${test.mode === "exam" ? "Exam" : "Study"} session results`}</p>
-          <h1 className="mt-1 text-3xl font-semibold sm:text-4xl" data-testid="result-headline">{mock ? (passed ? "You'd pass" : "Below the pass mark") : score >= 80 ? "Excellent work" : score >= 60 ? "Good effort" : "Keep going"}</h1>
-          {mock && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className={`chip ${passed ? "!text-good" : "!text-bad"}`}>Pass mark {PASS_MARK}%</span>
-              {prev !== null && (score === prev
-                ? <span className="chip">Same as your last mock ({prev}%)</span>
-                : <span className={`chip ${score > prev ? "!text-good" : "!text-bad"}`} data-testid="vs-last">{score > prev ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}{score > prev ? "+" : ""}{score - prev}% vs your last mock</span>)}
-            </div>
-          )}
-        </div>
+  const headline = mock ? (passed ? "You'd pass" : "Below the pass mark") : score >= 80 ? "Strong session" : score >= 60 ? "Good effort" : "Keep going";
+  const tiles: [string, number, string, string][] = [["correct", correct, "text-good", "n-correct"], ["wrong", incorrect, "text-bad", "n-incorrect"], ["skipped", unanswered, "text-ink", "n-unanswered"]];
 
-        <section className="relative overflow-hidden rounded-[28px] border border-brand/30 bg-gradient-to-br from-brand/20 via-brand/5 to-transparent p-5 shadow-lift sm:p-7">
-          <div className="flex flex-col items-center gap-6 sm:flex-row">
-            <ProgressRing value={score} size={140} stroke={12} sub={`${correct} of ${items.length}`} />
-            <div className="grid w-full flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
-              {[["Correct", correct, "text-good", CheckCircle2, "n-correct"], ["Wrong", incorrect, "text-bad", XCircle, "n-incorrect"], ["Skipped", unanswered, "text-muted", CircleHelp, "n-unanswered"]].map(([l, v, tone, Icon, id]) => {
-                const I = Icon as typeof Clock;
+  return (
+    <div className="mx-auto max-w-2xl space-y-3 lg:max-w-none lg:space-y-5">
+      <section className="flex flex-col items-center pt-1 text-center lg:flex-row lg:gap-10 lg:rounded-[28px] lg:bg-surface lg:px-9 lg:py-8 lg:text-left lg:shadow-card">
+        <p className="eyebrow mb-4 lg:hidden">{mock ? "Mock exam results" : `${test.mode === "exam" ? "Exam" : "Study"} session results`}</p>
+        <ProgressRing value={score} size={172} stroke={13} sub={`${correct} of ${items.length} correct`} />
+        <div className="mt-5 min-w-0 lg:mt-0 lg:flex-1">
+          <p className="eyebrow mb-2 hidden lg:block">{mock ? "Mock exam results" : `${test.mode === "exam" ? "Exam" : "Study"} session results`}</p>
+          <h1 className="text-[26px] font-extrabold leading-tight lg:text-[34px]" data-testid="result-headline">{headline}</h1>
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+            {mock && <span className={`inline-flex h-8 items-center rounded-full px-3 text-[13px] font-bold ${passed ? "bg-mint/15 text-good" : "bg-bad/15 text-bad"}`}>Pass mark {PASS_MARK}%</span>}
+            {mock && prev !== null && (score === prev
+              ? <span className="inline-flex h-8 items-center rounded-full bg-raised px-3 text-[13px] font-semibold text-muted">Same as your last mock ({prev}%)</span>
+              : <span className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold ${score > prev ? "bg-mint/15 text-good" : "bg-bad/15 text-bad"}`} data-testid="vs-last">{score > prev ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}{score > prev ? "+" : ""}{score - prev}% vs your last mock</span>)}
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-raised px-3 text-[13px] font-semibold text-ink/80"><Clock className="h-3.5 w-3.5" />{fmt(used)}{test.timed && test.timeLimitSec ? ` of ${fmt(test.timeLimitSec)}` : ""}</span>
+          </div>
+          <div className="mt-6 hidden gap-2.5 lg:flex">
+            {incorrect > 0 && (
+              <form action={retryIncorrect}>
+                <input type="hidden" name="testId" value={testId} />
+                <button className="btn h-[54px] !rounded-[18px] !px-6 text-base"><RotateCcw className="h-4 w-4" />Retry {incorrect} mistake{incorrect === 1 ? "" : "s"}</button>
+              </form>
+            )}
+            <Link href="/session/new" className="btn-ghost h-[54px] !rounded-[18px] !px-5 text-[15px]"><Plus className="h-4 w-4" />New session</Link>
+            <Link href="/history" className="btn-ghost h-[54px] !rounded-[18px] !px-5 text-[15px]">History</Link>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-3 gap-2.5 pt-2 lg:gap-5 lg:pt-0">
+        {tiles.map(([l, v, tone, id]) => (
+          <div key={l} className="card !rounded-[20px] !px-2 !py-3.5 text-center lg:!rounded-[24px] lg:!py-5">
+            <div className={`font-display text-[22px] font-extrabold tabular-nums lg:text-[28px] ${tone}`} data-testid={id}>{v}</div>
+            <div className="mt-0.5 text-[12.5px] text-muted lg:text-sm">{l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2.5 lg:hidden">
+        {incorrect > 0 && (
+          <form action={retryIncorrect} className="min-w-0 flex-1">
+            <input type="hidden" name="testId" value={testId} />
+            <button className="btn h-[54px] w-full whitespace-nowrap !rounded-[18px] !px-3 text-[15px]"><RotateCcw className="h-4 w-4 shrink-0" />Retry {incorrect} mistake{incorrect === 1 ? "" : "s"}</button>
+          </form>
+        )}
+        <Link href="/session/new" aria-label="New session" className={`btn-ghost h-[54px] !rounded-[18px] text-[15px] ${incorrect > 0 ? "w-[54px] !px-0" : "flex-1"}`}><Plus className="h-5 w-5" />{incorrect > 0 ? "" : "New session"}</Link>
+        <Link href="/history" className="btn-ghost h-[54px] !rounded-[18px] !px-5 text-[15px]">History</Link>
+      </div>
+
+      {weakest && (
+        <Link href={weakest.href} className="card card-hover flex items-center gap-3.5 !rounded-[22px] !py-3.5 !pl-4 !pr-3.5" data-testid="weakest">
+          <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-warn/15 text-warn"><Target className="h-[21px] w-[21px]" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[15px] font-semibold">Practise {weakest.name}</span>
+            <span className="mt-0.5 block text-[12.5px] text-muted">Your weakest chapter here · {weakest.c}/{weakest.t} correct</span>
+          </span>
+          <ChevronRight className="h-[18px] w-[18px] shrink-0 text-muted" />
+        </Link>
+      )}
+
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-5">
+        {[["By chapter", byChapter], ["By topic", byTopic]].map(([title, list]) => (
+          <div key={title as string} className="card !p-[18px] lg:!p-6">
+            <p className="eyebrow">{title as string}</p>
+            <div className="mt-3.5 space-y-3.5">
+              {(list as typeof byChapter).map((g) => {
+                const p = Math.round((g.c / g.t) * 100);
                 return (
-                  <div key={l as string} className="rounded-2xl border border-line bg-surface/60 p-3 text-center">
-                    <div className={`flex items-center justify-center gap-1 text-xs font-semibold ${tone}`}><I className="h-3.5 w-3.5" />{l as string}</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums" data-testid={id as string}>{v as number}</div>
+                  <div key={g.name}>
+                    <div className="flex items-baseline justify-between gap-3"><span className="truncate text-[14.5px] font-semibold">{g.name}</span><span className="shrink-0 text-sm font-bold tabular-nums">{g.c}/{g.t}</span></div>
+                    <Bar value={p} tone={p >= 80 ? "good" : p >= 60 ? "warn" : "bad"} className="mt-2" />
                   </div>
                 );
               })}
-              <div className="rounded-2xl border border-line bg-surface/60 p-3 text-center">
-                <div className="flex items-center justify-center gap-1 text-xs font-semibold text-muted"><Clock className="h-3.5 w-3.5" />Time</div>
-                <div className="mt-1 text-2xl font-bold tabular-nums">{fmt(used)}</div>
-                {test.timed && test.timeLimitSec ? <div className="text-[11px] text-muted">of {fmt(test.timeLimitSec)}</div> : null}
-              </div>
             </div>
           </div>
-          <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-            {incorrect > 0 && (
-              <form action={retryIncorrect} className="flex-[2]">
-                <input type="hidden" name="testId" value={testId} />
-                <button className="btn h-[52px] w-full !rounded-2xl text-base"><RotateCcw className="h-4 w-4" />Retry {incorrect} mistake{incorrect === 1 ? "" : "s"}</button>
-              </form>
-            )}
-            <div className="flex flex-1 gap-2.5">
-              <Link href="/session/new" className="btn-ghost h-[52px] flex-1 !rounded-2xl"><Plus className="h-4 w-4" />New</Link>
-              <Link href="/history" className="btn-ghost h-[52px] flex-1 !rounded-2xl">History</Link>
-            </div>
-          </div>
-        </section>
+        ))}
+      </section>
 
-        {weakest && (
-          <section className="flex flex-col gap-3 rounded-[22px] border border-bad/30 bg-bad/5 p-4 sm:flex-row sm:items-center" data-testid="weakest">
-            <Target className="h-5 w-5 shrink-0 text-bad" />
-            <p className="min-w-0 flex-1 text-sm"><b className="text-bad">Weakest chapter: {weakest.name}</b> <span className="text-muted">({weakest.c}/{weakest.t} correct)</span></p>
-            <Link href={weakest.href} className="btn shrink-0 !rounded-2xl">Practise this chapter</Link>
-          </section>
-        )}
-
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {[["By chapter", byChapter], ["By topic", byTopic]].map(([title, list]) => (
-            <div key={title as string} className="card">
-              <h2 className="font-display text-lg font-semibold">{title as string}</h2>
-              <div className="mt-3 space-y-3">
-                {(list as typeof byChapter).map((g) => {
-                  const p = Math.round((g.c / g.t) * 100);
-                  return (
-                    <div key={g.name}>
-                      <div className="flex justify-between text-sm"><span className="truncate pr-2">{g.name}</span><span className="shrink-0 text-muted">{g.c}/{g.t} · {p}%</span></div>
-                      <Bar value={p} tone={p >= 70 ? "good" : p < 50 ? "bad" : "brand"} className="mt-1.5" />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <ResultReview items={items} />
-      </div>
+      <div className="pt-3"><ResultReview items={items} /></div>
     </div>
   );
 }

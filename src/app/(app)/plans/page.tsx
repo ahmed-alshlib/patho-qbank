@@ -43,7 +43,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
     <div className="space-y-8">
       <div>
         <p className="eyebrow">{sp.welcome ? "Welcome to Rakeez" : "Subscriptions"}</p>
-        <h1 className="mt-1 text-4xl font-semibold">Choose your subjects</h1>
+        <h1 className="mt-1 text-[30px] font-extrabold leading-tight lg:text-[38px]">Choose your subjects</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">Each subject is a separate package. Paid subjects unlock when your payment is approved; free subjects unlock instantly. Access lasts for the number of months shown on each card.</p>
       </div>
 

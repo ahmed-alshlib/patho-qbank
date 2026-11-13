@@ -21,7 +21,7 @@ export function GroupPanel({ g, open, onToggle }: { g: QGroup; open: boolean; on
   const foldable = g.kind !== "tf";
 
   return (
-    <div className="rounded-2xl border border-brand/40 bg-brand/5">
+    <div className="overflow-hidden rounded-[20px] bg-surface shadow-card">
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-brand">
           <Icon className="h-4 w-4 shrink-0" /><span className="truncate">{heading}</span>
@@ -29,7 +29,7 @@ export function GroupPanel({ g, open, onToggle }: { g: QGroup; open: boolean; on
         <span className="flex shrink-0 items-center gap-2">
           {g.total > 1 && <span className="text-xs text-muted">{g.index + 1} of {g.total}</span>}
           {foldable && (
-            <button onClick={onToggle} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-brand transition hover:bg-brand/10"
+            <button onClick={onToggle} className="inline-flex h-8 items-center gap-1 rounded-full bg-raised px-3 text-xs font-semibold text-ink/85 transition hover:bg-ink/10"
               aria-expanded={open}>
               {open ? "Hide" : g.kind === "case" ? "Read" : "Show"}
               <ChevronDown className={`h-3.5 w-3.5 transition ${open ? "rotate-180" : ""}`} />
@@ -39,7 +39,7 @@ export function GroupPanel({ g, open, onToggle }: { g: QGroup; open: boolean; on
       </div>
 
       {(open || !foldable) && (
-        <div className="space-y-3 border-t border-brand/20 px-4 py-3">
+        <div className="space-y-3 border-t border-line px-4 py-3.5">
           {g.body && <p className="qtext whitespace-pre-line leading-relaxed">{g.body}</p>}
           {g.options.length > 0 && (
             <ul className="grid grid-cols-1 gap-x-5 gap-y-1.5 sm:grid-cols-2">
@@ -77,11 +77,11 @@ export function ChoiceGrid({ choices, selectedId, correctIds, chosenId, disabled
           const right = correctIds?.includes(c.id);
           const wrong = !!chosenId && chosenId === c.id && !right;
           const on = selectedId === c.id && !correctIds;
-          const cls = right ? "border-good bg-good/15 text-good" : wrong ? "border-bad bg-bad/15 text-bad"
-            : on ? "border-brand bg-brand/15 text-ink shadow-glow" : "border-line text-muted hover:border-brand/50 hover:bg-raised";
+          const cls = right ? "border-mint bg-mint/20 text-brand" : wrong ? "border-bad bg-bad/20 text-bad"
+            : on ? "border-mint bg-mint/15 text-ink shadow-glow" : "border-transparent bg-surface text-ink/80 shadow-card hover:bg-ink/[.06]";
           return (
             <button key={c.id} disabled={disabled} onClick={() => onPick(c.id)} title={c.text}
-              className={`grid h-12 place-items-center rounded-xl border text-base font-bold transition ${cls}`}>
+              className={`grid h-12 place-items-center rounded-2xl border-[1.5px] text-base font-bold transition duration-200 active:scale-95 ${cls}`}>
               {right ? <Check className="h-4 w-4" /> : wrong ? <X className="h-4 w-4" /> : c.label}
             </button>
           );

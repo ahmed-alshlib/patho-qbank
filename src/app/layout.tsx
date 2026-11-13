@@ -1,4 +1,5 @@
 import "@fontsource-variable/inter";
+import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { AnalyticsInit } from "@/components/Analytics";
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   // iPhone: open full-screen from the home screen with the right name and status bar.
   appleWebApp: { capable: true, title: "Rakeez", statusBarStyle: "black" },
 };
-export const viewport: Viewport = { themeColor: "#04160A" };
+export const viewport: Viewport = { themeColor: "#0A0F0C" };
 
 // Runs before first paint so there is no light/dark flash.
 const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light")document.documentElement.classList.add("dark")}catch(e){}`;

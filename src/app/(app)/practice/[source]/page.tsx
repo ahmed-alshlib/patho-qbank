@@ -8,8 +8,8 @@ import { EmptyState } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 const META: Record<ReviewKind, { title: string; back: string; label: string }> = {
-  incorrect: { title: "Retry incorrect questions", back: "/incorrect", label: "Incorrect" },
-  bookmarks: { title: "Bookmarked questions", back: "/bookmarks", label: "Bookmarks" },
+  incorrect: { title: "Retry mistakes", back: "/incorrect", label: "Mistakes" },
+  bookmarks: { title: "Saved questions", back: "/bookmarks", label: "Saved" },
   notes: { title: "Questions with notes & highlights", back: "/notes", label: "Notes & highlights" },
 };
 

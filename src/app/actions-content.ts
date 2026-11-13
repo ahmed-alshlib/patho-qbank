@@ -56,8 +56,11 @@ export async function saveQuestion(f: FormData) {
   if (err) redirect(`/admin/content/${topicId}?error=${encodeURIComponent(err)}`);
   if (id) {
     await db.update(questions).set({ questionText: q.text, explanation: q.explanation, tags: cleanTags(str(f, "tags")) }).where(eq(questions.id, id));
+    // The "why" lines are not on this form: keep each one with the choice whose wording did not change.
+    const before = await db.select({ text: answerChoices.text, note: answerChoices.note }).from(answerChoices).where(eq(answerChoices.questionId, id));
+    const noteOf = (text: string) => before.find((b) => b.text.trim().toLowerCase() === text.trim().toLowerCase())?.note ?? "";
     await db.delete(answerChoices).where(eq(answerChoices.questionId, id));
-    await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: id, label: LABELS[i], text, isCorrect: LABELS[i] === q.correct })));
+    await db.insert(answerChoices).values(q.choices.map((text, i) => ({ questionId: id, label: LABELS[i], text, isCorrect: LABELS[i] === q.correct, note: noteOf(text) })));
   } else {
     const last = await db.select({ o: questions.order }).from(questions).where(eq(questions.topicId, topicId)).orderBy(asc(questions.order));
     const [qr] = await db.insert(questions).values({ topicId, questionText: q.text, explanation: q.explanation, tags: cleanTags(str(f, "tags")), order: last.length ? last[last.length - 1].o + 1 : 0 }).returning();
@@ -91,7 +94,7 @@ export async function importJson(f: FormData) {
     }
     const r = await importChapters(Array.isArray(data) ? (data as ImportChapter[]) : [data as ImportChapter], { subject: str(f, "subject").trim() || undefined, chapter: str(f, "chapter").trim() || undefined, topic: str(f, "topic").trim() || undefined });
     done();
-    redirect(`/admin/content?imported=${r.added}&skipped=${r.skipped}&merged=${r.merged}&groups=${r.groups}`);
+    redirect(`/admin/content?imported=${r.added}&skipped=${r.skipped}&merged=${r.merged}&groups=${r.groups}&explained=${r.explained}`);
   } catch (e) {
     if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
     const m = e instanceof Error ? e.message : "Import failed.";

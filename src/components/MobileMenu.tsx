@@ -1,33 +1,41 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
-import { NAV_ITEMS, useActive } from "@/components/NavLinks";
+import { X } from "lucide-react";
+import { NAV_ITEMS, NavRow, useActive } from "@/components/NavLinks";
 
-/** Phone menu: reaches everything that is not in the bottom bar (summaries, bookmarks, incorrect, notes, subscriptions). */
-export default function MobileMenu({ badges }: { badges?: Record<string, number> }) {
+/** Phone menu behind the profile circle: everything that is not in the bottom bar, plus theme and log out. */
+export default function MobileMenu({ badges, initials, name, email, children }: { badges?: Record<string, number>; initials: string; name: string; email: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const active = useActive(), path = usePathname();
   useEffect(() => setMounted(true), []);
   useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   const rest = NAV_ITEMS.filter((i) => !i.bottom);
-  const row = (i: (typeof NAV_ITEMS)[number]) => (
-    <Link key={i.href} href={i.href} data-active={active(i.href)} className="nav-link"><i.icon className="h-[18px] w-[18px]" />{i.label}
-      {!!badges?.[i.href] && <span className="ml-auto rounded-full bg-bad/15 px-2 py-0.5 text-[11px] font-semibold text-bad">{badges[i.href]}</span>}</Link>
-  );
   return (
     <>
-      <button className="btn-ghost !p-2.5" aria-label="Menu" data-testid="mobile-menu" onClick={() => setOpen(true)}><Menu className="h-4 w-4" /></button>
+      <button className="grid h-11 w-11 place-items-center rounded-full bg-mint font-display text-[15px] font-extrabold text-onmint transition duration-200 active:scale-95" aria-label="Menu" aria-haspopup="dialog" data-testid="mobile-menu" onClick={() => setOpen(true)}>{initials}</button>
       {mounted && open && createPortal(
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="glass-float absolute inset-x-3 top-3 max-h-[85vh] space-y-1 overflow-y-auto !p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex items-center justify-between"><span className="font-display text-lg font-semibold">Menu</span><button className="btn-ghost !p-2" aria-label="Close" onClick={() => setOpen(false)}><X className="h-4 w-4" /></button></div>
-            {rest.filter((i) => !i.group).map(row)}
-            <p className="eyebrow px-3 pb-1 pt-3">Review</p>
-            {rest.filter((i) => i.group).map(row)}
+        <div className="animate-fade fixed inset-0 z-50 bg-black/55 backdrop-blur-sm" onClick={() => setOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Menu" className="glass-float animate-rise absolute inset-x-3 top-3 max-h-[88vh] overflow-y-auto p-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 p-1.5 pb-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-mint font-display text-[15px] font-extrabold text-onmint">{initials}</span>
+              <div className="min-w-0 flex-1"><div className="truncate text-[15px] font-semibold">{name}</div><div className="truncate text-xs text-muted">{email}</div></div>
+              <button className="btn-ghost h-10 w-10 !rounded-full !p-0" aria-label="Close" onClick={() => setOpen(false)}><X className="h-[18px] w-[18px]" /></button>
+            </div>
+            <div className="space-y-0.5">
+              {rest.filter((i) => !i.group).map((i) => <NavRow key={i.href} item={i} active={active(i.href)} badge={badges?.[i.href]} />)}
+              <p className="eyebrow px-3 pb-2 pt-4">Review</p>
+              {rest.filter((i) => i.group).map((i) => <NavRow key={i.href} item={i} active={active(i.href)} badge={badges?.[i.href]} />)}
+            </div>
+            {children && <div className="mt-3 flex gap-2 border-t border-line pt-3">{children}</div>}
           </div>
         </div>, document.body)}
     </>

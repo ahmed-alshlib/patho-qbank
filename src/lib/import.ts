@@ -2,7 +2,12 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { parseTags } from "@/lib/tags";
 import { db, subjects, chapters, topics, questions, answerChoices, questionGroups } from "@/db";
 
-export type ImportQ = { text: string; choices?: string[]; correct: string; explanation: string; tags?: string | string[] };
+export type ImportQ = {
+  text: string; choices?: string[]; correct: string; explanation: string; tags?: string | string[];
+  /** Optional: one short line per choice, in the same order as the choices ("why not this one").
+   *  Leave the correct choice's line empty. Shown to the student only after they answer. */
+  why?: string[];
+};
 
 /** case = shared scenario · emq = shared option list · tf = shared true/false stem */
 export type GroupKind = "case" | "emq" | "tf";
@@ -94,8 +99,12 @@ export function checkQuestion(q: ImportQ, choices?: string[]): string | null {
   if (cs.length > MAX_CHOICES) return `"${label}" has more than ${MAX_CHOICES} choices`;
   if (!correctIndexes(q.correct, cs.length)) return `"${label}" has an invalid correct answer`;
   if (!q.explanation?.trim()) return `"${label}" has no explanation`;
+  if (q.why !== undefined && (!Array.isArray(q.why) || q.why.length > cs.length)) return `"${label}" has a "why" list that does not match its choices (one line per choice, in the same order)`;
   return null;
 }
+
+/** The "why" lines of a question, one per choice (empty where none was written). */
+const whyFor = (q: ImportQ, n: number) => Array.from({ length: n }, (_, i) => String(q.why?.[i] ?? "").trim());
 
 const tagsOf = (q: ImportQ, g?: ImportGroup) => {
   const raw = q.tags ?? g?.tags ?? "";
@@ -107,7 +116,7 @@ const tagsOf = (q: ImportQ, g?: ImportGroup) => {
 export async function importChapters(
   input: ImportChapter[],
   opts: { subject?: string; chapter?: string; topic?: string } = {}
-): Promise<{ added: number; skipped: number; merged: number; groups: number }> {
+): Promise<{ added: number; skipped: number; merged: number; groups: number; explained: number }> {
   const list = input.map((c0) => {
     const c: ImportChapter = { ...c0 };
     if (opts.subject) c.subject = opts.subject;
@@ -143,7 +152,7 @@ export async function importChapters(
     }
   }
 
-  let added = 0, skipped = 0, merged = 0, groupsAdded = 0;
+  let added = 0, skipped = 0, merged = 0, groupsAdded = 0, explained = 0;
 
   for (const c of list) {
     let [subj] = await db.select().from(subjects).where(sql`lower(${subjects.name}) = ${c.subject.trim().toLowerCase()}`).limit(1);
@@ -167,7 +176,7 @@ export async function importChapters(
         .from(questions).where(eq(questions.topicId, tp.id)).orderBy(asc(questions.order));
       // The key spans both tables, so the existing questions' choices are loaded with them.
       const prior = have.length
-        ? await db.select({ questionId: answerChoices.questionId, text: answerChoices.text }).from(answerChoices).where(inArray(answerChoices.questionId, have.map((h) => h.id)))
+        ? await db.select({ id: answerChoices.id, questionId: answerChoices.questionId, text: answerChoices.text, note: answerChoices.note }).from(answerChoices).where(inArray(answerChoices.questionId, have.map((h) => h.id)))
         : [];
       const choicesOf = new Map<string, string[]>();
       for (const r of prior) { const got = choicesOf.get(r.questionId); if (got) got.push(r.text); else choicesOf.set(r.questionId, [r.text]); }
@@ -187,8 +196,17 @@ export async function importChapters(
         if (dup) {
           // Same question already there: keep it, but add any exam tags it did not have yet.
           const add = tagsOf(q, g).filter((x) => !dup.tags.some((y) => y.toLowerCase() === x.toLowerCase()));
+          // "Why" lines fill in where the stored choice has none yet. A line already there is never overwritten.
+          const why = whyFor(q, cs.length);
+          let filled = false;
+          for (const [i, line] of why.entries()) {
+            if (!line) continue;
+            const row = prior.find((r) => r.questionId === dup.id && norm(r.text) === norm(cs[i]) && !r.note.trim());
+            if (row) { await db.update(answerChoices).set({ note: line }).where(eq(answerChoices.id, row.id)); row.note = line; filled = true; }
+          }
+          if (filled) explained++;
           if (add.length) { dup.tags = [...dup.tags, ...add]; await db.update(questions).set({ tags: dup.tags.join(", ") }).where(eq(questions.id, dup.id)); merged++; }
-          else skipped++;
+          else if (!filled) skipped++;
           return;
         }
         const [qr] = await db.insert(questions).values({
@@ -197,7 +215,8 @@ export async function importChapters(
           groupId: groupId ?? null, groupOrder: groupOrder ?? 0,
         }).returning();
         const correct = correctIndexes(q.correct, cs.length) ?? [];
-        await db.insert(answerChoices).values(cs.map((text, i) => ({ questionId: qr.id, label: ALL_LABELS[i], text: String(text).trim(), isCorrect: correct.includes(i) })));
+        const why = whyFor(q, cs.length);
+        await db.insert(answerChoices).values(cs.map((text, i) => ({ questionId: qr.id, label: ALL_LABELS[i], text: String(text).trim(), isCorrect: correct.includes(i), note: why[i] })));
         seen.set(key, { id: qr.id, tags: parseTags(qr.tags) });
         added++;
       };
@@ -220,5 +239,5 @@ export async function importChapters(
       }
     }
   }
-  return { added, skipped, merged, groups: groupsAdded };
+  return { added, skipped, merged, groups: groupsAdded, explained };
 }

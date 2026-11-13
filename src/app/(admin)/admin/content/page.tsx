@@ -22,7 +22,8 @@ const sample = `{
       { "text": "Question text?",
         "choices": ["Choice A", "Choice B", "Choice C", "Choice D", "Choice E"],
         "correct": "C",
-        "explanation": "Why the answer is right.",
+        "explanation": "In short, the answer.\\n\\nWhy it is right.\\n\\nExam tip: a short memory hook.",
+        "why": ["Why A is wrong", "Why B is wrong", "", "Why D is wrong", "Why E is wrong"],
         "tags": "Final 01/2026" }
     ]}
   ]
@@ -36,7 +37,7 @@ function Edit({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export default async function Content({ searchParams }: { searchParams: Promise<{ imported?: string; skipped?: string; merged?: string; groups?: string; importError?: string; q?: string }> }) {
+export default async function Content({ searchParams }: { searchParams: Promise<{ imported?: string; skipped?: string; merged?: string; groups?: string; explained?: string; importError?: string; q?: string }> }) {
   const user = await getUser();
   if (!user?.isAdmin) redirect("/");
   const sp = await searchParams;
@@ -58,7 +59,7 @@ export default async function Content({ searchParams }: { searchParams: Promise<
     <div className="space-y-6">
       <AdminTabs active="content" />
 
-      {sp.imported && <div className="card !border-good/40 text-sm text-good">Imported {sp.imported} new question(s){Number(sp.merged) ? `, added new exam tags to ${sp.merged} existing question(s)` : ""}{Number(sp.skipped) ? `, ${sp.skipped} already existed with the same tags` : ""}{Number(sp.groups) ? `, in ${sp.groups} new block(s)` : ""}.</div>}
+      {sp.imported && <div className="card !border-good/40 text-sm text-good">Imported {sp.imported} new question(s){Number(sp.merged) ? `, added new exam tags to ${sp.merged} existing question(s)` : ""}{Number(sp.skipped) ? `, ${sp.skipped} already existed with the same tags` : ""}{Number(sp.groups) ? `, in ${sp.groups} new block(s)` : ""}{Number(sp.explained) ? `, added "why" lines to ${sp.explained} existing question(s)` : ""}.</div>}
       {sp.importError && <div className="card !border-bad/40 text-sm text-bad" role="alert">Import failed: {sp.importError}</div>}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Stat n={subs.length} l="Subjects" /><Stat n={chs.length} l="Chapters" /><Stat n={tps.length} l="Topics" /><Stat n={totalQ} l="Questions" /></div>

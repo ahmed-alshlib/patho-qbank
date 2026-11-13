@@ -13,7 +13,7 @@ export default async function History() {
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-3">
-        <div><p className="eyebrow">Sessions</p><h1 className="mt-1 text-4xl font-semibold">History</h1></div>
+        <div><p className="eyebrow">Sessions</p><h1 className="mt-1 text-[30px] font-extrabold leading-tight lg:text-[38px]">History</h1></div>
         <Link href="/session/new" className="btn"><Plus className="h-4 w-4" />New session</Link>
       </div>
       {list.length === 0 ? (
@@ -26,8 +26,8 @@ export default async function History() {
             const done = !!s.finishedAt;
             const score = s.total ? Math.round((s.correct / s.total) * 100) : 0;
             return (
-              <Link key={s.id} href={done ? `/results/${s.id}` : `/session/${s.id}`} className="card card-hover flex items-center gap-4" data-testid="session-row">
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-bold ${done ? "bg-brand/10 text-brand" : "bg-warn/10 text-warn"}`}>
+              <Link key={s.id} href={done ? `/results/${s.id}` : `/session/${s.id}`} className="card card-hover flex items-center gap-3.5 !rounded-[22px] !p-4" data-testid="session-row">
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-xs font-bold ${done ? "bg-mint/15 text-brand" : "bg-warn/15 text-warn"}`}>
                   {done ? `${score}%` : "…"}
                 </span>
                 <div className="min-w-0 flex-1">

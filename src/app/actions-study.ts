@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, users, answerChoices, questions, userAnswers, bookmarks, notes, highlights, reportedQuestions } from "@/db";
 import { getUser } from "@/lib/auth";
-import type { Reveal } from "@/lib/questions";
+import { whyMap, type Reveal } from "@/lib/questions";
 import { assertQuestionAccess } from "@/lib/access";
 import { peerStats } from "@/lib/peers";
 
@@ -29,7 +29,7 @@ export async function submitAnswer(questionId: string, choiceId: string, timeSpe
     timeSpentSec: Math.max(0, Math.min(3600, Math.round(timeSpentSec))),
   });
   const peers = (await peerStats([questionId])).get(questionId) ?? null;
-  return { choiceId, isCorrect: picked.isCorrect, correctChoiceIds: correct.map((c) => c.id), explanation: q.explanation, peers };
+  return { choiceId, isCorrect: picked.isCorrect, correctChoiceIds: correct.map((c) => c.id), explanation: q.explanation, peers, why: whyMap(choices) };
 }
 
 export async function toggleBookmark(questionId: string): Promise<boolean> {
